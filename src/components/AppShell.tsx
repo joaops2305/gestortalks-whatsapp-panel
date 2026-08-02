@@ -8,48 +8,89 @@ import KeyRoundedIcon from '@mui/icons-material/KeyRounded';
 import HubRoundedIcon from '@mui/icons-material/HubRounded';
 import DescriptionRoundedIcon from '@mui/icons-material/DescriptionRounded';
 import SettingsRoundedIcon from '@mui/icons-material/SettingsRounded';
-import { Box, Divider, Drawer, List, ListItemButton, ListItemIcon, ListItemText, Toolbar, Typography } from '@mui/material';
+import WebhookRoundedIcon from '@mui/icons-material/WebhookRounded';
+import MessageRoundedIcon from '@mui/icons-material/MessageRounded';
+import InsightsRoundedIcon from '@mui/icons-material/InsightsRounded';
+import LightModeRoundedIcon from '@mui/icons-material/LightModeRounded';
+import DarkModeRoundedIcon from '@mui/icons-material/DarkModeRounded';
+import LogoutRoundedIcon from '@mui/icons-material/LogoutRounded';
+import MenuRoundedIcon from '@mui/icons-material/MenuRounded';
+import { AppBar, Box, Divider, Drawer, IconButton, List, ListItemButton, ListItemIcon, ListItemText, Stack, Toolbar, Tooltip, Typography } from '@mui/material';
+import Link from 'next/link';
+import { usePathname, useRouter } from 'next/navigation';
+import { useState } from 'react';
+import { useThemeMode } from '@/context/ThemeModeContext';
+import { clearSession } from '@/services/auth';
 
 const drawerWidth = 260;
 const items = [
-  ['Dashboard', DashboardRoundedIcon],
-  ['Empresas', BusinessRoundedIcon],
-  ['Usuários', PeopleRoundedIcon],
-  ['Instâncias', PhoneAndroidRoundedIcon],
-  ['API Keys', KeyRoundedIcon],
-  ['Aplicações', HubRoundedIcon],
-  ['Logs', DescriptionRoundedIcon],
-  ['Configurações', SettingsRoundedIcon],
+  ['Dashboard', '/', DashboardRoundedIcon],
+  ['Empresas', '/empresas', BusinessRoundedIcon],
+  ['Usuários', '/usuarios', PeopleRoundedIcon],
+  ['Instâncias', '/instancias', PhoneAndroidRoundedIcon],
+  ['Mensagens', '/mensagens', MessageRoundedIcon],
+  ['Aplicações', '/aplicacoes', HubRoundedIcon],
+  ['API Keys', '/api-keys', KeyRoundedIcon],
+  ['Webhooks', '/webhooks', WebhookRoundedIcon],
+  ['Métricas', '/metricas', InsightsRoundedIcon],
+  ['Logs', '/logs', DescriptionRoundedIcon],
+  ['Configurações', '/configuracoes', SettingsRoundedIcon],
 ] as const;
 
 export function AppShell({ children }: { children: React.ReactNode }) {
+  const pathname = usePathname();
+  const router = useRouter();
+  const { mode, toggleMode } = useThemeMode();
+  const [mobileOpen, setMobileOpen] = useState(false);
+
+  const drawer = (
+    <>
+      <Toolbar sx={{ minHeight: 76 }}>
+        <Box>
+          <Typography variant="h6" fontWeight={800}>GestorTalks Whats</Typography>
+          <Typography variant="caption" color="text.secondary">Painel global</Typography>
+        </Box>
+      </Toolbar>
+      <Divider />
+      <List sx={{ px: 1.5, py: 2 }}>
+        {items.map(([label, href, Icon]) => (
+          <ListItemButton
+            key={href}
+            component={Link}
+            href={href}
+            selected={pathname === href}
+            onClick={() => setMobileOpen(false)}
+            sx={{ borderRadius: 2, mb: 0.5 }}
+          >
+            <ListItemIcon sx={{ minWidth: 40 }}><Icon fontSize="small" /></ListItemIcon>
+            <ListItemText primary={label} />
+          </ListItemButton>
+        ))}
+      </List>
+    </>
+  );
+
   return (
     <Box sx={{ display: 'flex', minHeight: '100vh' }}>
-      <Drawer
-        variant="permanent"
-        sx={{
-          width: drawerWidth,
-          flexShrink: 0,
-          '& .MuiDrawer-paper': { width: drawerWidth, borderRight: '1px solid', borderColor: 'divider' },
-        }}
-      >
-        <Toolbar sx={{ minHeight: 76 }}>
-          <Box>
-            <Typography variant="h6" fontWeight={800}>GestorTalks Whats</Typography>
-            <Typography variant="caption" color="text.secondary">Painel global</Typography>
-          </Box>
+      <AppBar position="fixed" color="inherit" elevation={0} sx={{ ml: { md: `${drawerWidth}px` }, width: { md: `calc(100% - ${drawerWidth}px)` }, borderBottom: '1px solid', borderColor: 'divider' }}>
+        <Toolbar>
+          <IconButton sx={{ display: { md: 'none' }, mr: 1 }} onClick={() => setMobileOpen(true)}><MenuRoundedIcon /></IconButton>
+          <Typography fontWeight={700} sx={{ flexGrow: 1 }}>Administração</Typography>
+          <Stack direction="row" spacing={1}>
+            <Tooltip title={mode === 'light' ? 'Ativar tema escuro' : 'Ativar tema claro'}>
+              <IconButton onClick={toggleMode}>{mode === 'light' ? <DarkModeRoundedIcon /> : <LightModeRoundedIcon />}</IconButton>
+            </Tooltip>
+            <Tooltip title="Sair">
+              <IconButton onClick={() => { clearSession(); router.replace('/login'); }}><LogoutRoundedIcon /></IconButton>
+            </Tooltip>
+          </Stack>
         </Toolbar>
-        <Divider />
-        <List sx={{ px: 1.5, py: 2 }}>
-          {items.map(([label, Icon], index) => (
-            <ListItemButton key={label} selected={index === 0} sx={{ borderRadius: 2, mb: 0.5 }}>
-              <ListItemIcon sx={{ minWidth: 40 }}><Icon fontSize="small" /></ListItemIcon>
-              <ListItemText primary={label} />
-            </ListItemButton>
-          ))}
-        </List>
-      </Drawer>
-      <Box component="main" sx={{ flexGrow: 1, p: { xs: 2, md: 4 }, overflow: 'hidden' }}>
+      </AppBar>
+
+      <Drawer variant="permanent" sx={{ display: { xs: 'none', md: 'block' }, width: drawerWidth, flexShrink: 0, '& .MuiDrawer-paper': { width: drawerWidth, borderRight: '1px solid', borderColor: 'divider' } }}>{drawer}</Drawer>
+      <Drawer open={mobileOpen} onClose={() => setMobileOpen(false)} sx={{ display: { xs: 'block', md: 'none' }, '& .MuiDrawer-paper': { width: drawerWidth } }}>{drawer}</Drawer>
+
+      <Box component="main" sx={{ flexGrow: 1, p: { xs: 2, md: 4 }, pt: { xs: 11, md: 12 }, overflow: 'hidden' }}>
         {children}
       </Box>
     </Box>
