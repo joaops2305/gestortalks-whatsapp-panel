@@ -36,13 +36,21 @@ export const resourceConfigs: Record<string, ResourceConfig> = {
   users: {
     title: 'Usuários', description: 'Gerencie os acessos administrativos da plataforma.', actionLabel: 'Novo usuário', endpoint: '/api/admin/users', superadminOnly: true,
     fields: [
-      { name: 'name', label: 'Nome completo', required: true }, { name: 'email', label: 'E-mail', type: 'email', required: true },
-      { name: 'password', label: 'Senha inicial', type: 'password' }, company(),
+      { name: 'name', label: 'Nome completo', required: true },
+      { name: 'email', label: 'E-mail', type: 'email', required: true },
+      { name: 'password', label: 'Senha inicial (mínimo 8 caracteres)', type: 'password', required: true },
+      { name: 'company_id', label: 'Empresa', type: 'select', lookup: 'companies' },
       { name: 'role', label: 'Perfil', type: 'select', required: true, options: ['superadmin','admin_empresa','desenvolvedor','operador','visualizador'].map((value) => ({ label: value, value })) },
       { name: 'status', label: 'Ativo', type: 'boolean' },
     ],
     columns: [{ key: 'name', label: 'Nome' }, { key: 'email', label: 'E-mail' }, { key: 'company_name', label: 'Empresa' }, { key: 'role', label: 'Perfil' }, { key: 'status', label: 'Status' }],
-    toPayload: (v) => ({ ...v, company_id: v.company_id ? Number(v.company_id) : null, password: v.password || undefined }),
+    toPayload: (v) => ({
+      ...v,
+      name: String(v.name || '').trim(),
+      email: String(v.email || '').trim().toLowerCase(),
+      company_id: v.company_id ? Number(v.company_id) : null,
+      password: v.password ? String(v.password) : undefined,
+    }),
   },
   applications: {
     title: 'Aplicações', description: 'Cadastre aplicações externas que consomem a API.', actionLabel: 'Nova aplicação', endpoint: '/api/admin/applications',
