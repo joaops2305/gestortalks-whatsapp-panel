@@ -15,17 +15,19 @@ import { useEffect, useMemo, useState } from 'react';
 import { AppShell } from '@/components/AppShell';
 import { AuthGuard } from '@/components/AuthGuard';
 import { PaginationBar } from '@/components/ui/PaginationBar';
+import { InstanceFormDialog } from '@/modules/instances/InstanceFormDialog';
 import { InstanceQrDialog } from '@/modules/instances/InstanceQrDialog';
 import { instanceService } from '@/modules/instances/instance.service';
 import type { WhatsAppInstance } from '@/modules/instances/types';
 import { useInstances } from '@/modules/instances/useInstances';
 
 export function InstancesAdminPage() {
-  const { items, loading, error, setError, load, patch, removeLocal } = useInstances();
+  const { items, loading, error, setError, load, insertLocal, patch, removeLocal } = useInstances();
   const [search, setSearch] = useState('');
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(10);
   const [selected, setSelected] = useState<WhatsAppInstance | null>(null);
+  const [formOpen, setFormOpen] = useState(false);
   const [busyId, setBusyId] = useState<number | null>(null);
 
   const filtered = useMemo(() => {
@@ -79,7 +81,7 @@ export function InstancesAdminPage() {
               <Typography variant="h4" fontWeight={800}>Instâncias</Typography>
               <Typography color="text.secondary">A lista carrega uma vez. O QR consulta somente a instância aberta.</Typography>
             </Box>
-            <Button variant="contained" startIcon={<AddRoundedIcon />} disabled>Nova instância</Button>
+            <Button variant="contained" startIcon={<AddRoundedIcon />} onClick={() => setFormOpen(true)}>Nova instância</Button>
           </Stack>
 
           {error && <Alert severity="error" onClose={() => setError('')}>{error}</Alert>}
@@ -132,6 +134,15 @@ export function InstancesAdminPage() {
             </CardContent>
           </Card>
         </Stack>
+
+        <InstanceFormDialog
+          open={formOpen}
+          onClose={() => setFormOpen(false)}
+          onCreated={(instance) => {
+            insertLocal(instance);
+            setPage(1);
+          }}
+        />
 
         <InstanceQrDialog
           instance={selected}
