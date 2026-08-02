@@ -18,7 +18,6 @@ import {
   Paper,
   Stack,
   Typography,
-  useTheme,
 } from '@mui/material';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { instanceService } from './instance.service';
@@ -42,7 +41,6 @@ export function InstanceQrDialog({ instance, open, onClose, onChange }: {
   onClose: () => void;
   onChange: (changes: Partial<WhatsAppInstance>) => void;
 }) {
-  const theme = useTheme();
   const instanceId = instance?.id ?? null;
 
   const [qrCode, setQrCode] = useState<string | null>(null);
@@ -222,7 +220,6 @@ export function InstanceQrDialog({ instance, open, onClose, onChange }: {
       openedRef.current = false;
       clearTimers();
     };
-    // O modal inicia somente ao abrir ou mudar o ID. Callbacks ficam em refs/closures estáveis.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open, instanceId]);
 
@@ -289,12 +286,14 @@ export function InstanceQrDialog({ instance, open, onClose, onChange }: {
 
             {connected && (
               <Stack
-                position="absolute"
-                inset={0}
                 alignItems="center"
                 justifyContent="center"
-                bgcolor="rgba(255,255,255,0.96)"
-                borderRadius={4}
+                sx={{
+                  position: 'absolute',
+                  inset: 0,
+                  bgcolor: 'rgba(255,255,255,0.96)',
+                  borderRadius: 4,
+                }}
               >
                 <TaskAltRoundedIcon color="success" sx={{ fontSize: 58, mb: 1 }} />
                 <Typography color="success.main" fontWeight={800}>Conectado!</Typography>
