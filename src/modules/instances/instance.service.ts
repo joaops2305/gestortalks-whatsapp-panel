@@ -1,10 +1,22 @@
 import { api } from '@/services/api';
 import type { InstanceStatusResponse, WhatsAppInstance } from './types';
 
+export type CreateInstancePayload = {
+  empresa_id: number;
+  external_instance_id?: number | null;
+  session: string;
+  name?: string | null;
+};
+
 export const instanceService = {
   async list(): Promise<WhatsAppInstance[]> {
     const response = await api.get('/api/instances');
     return response.data?.data ?? [];
+  },
+
+  async create(payload: CreateInstancePayload): Promise<WhatsAppInstance> {
+    const response = await api.post('/api/instances', payload);
+    return response.data?.data;
   },
 
   async get(id: number): Promise<WhatsAppInstance> {
