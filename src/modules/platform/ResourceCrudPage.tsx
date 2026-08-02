@@ -46,14 +46,30 @@ export function ResourceCrudPage({ resource }: { resource: keyof typeof resource
   const [applications, setApplications] = useState<Array<{ label: string; value: number; company_id: number }>>([]);
 
   useEffect(() => { if (!allowed) router.replace('/'); }, [allowed, router]);
+
   useEffect(() => {
-    if (!isSuperAdmin) return;
-    void Promise.all([api.get('/api/admin/companies'), api.get('/api/admin/applications')])
-      .then(([c, a]) => {
-        setCompanies((c.data?.data ?? []).map((item: any) => ({ label: item.name, value: Number(item.id) })));
-        setApplications((a.data?.data ?? []).map((item: any) => ({ label: item.name, value: Number(item.id), company_id: Number(item.company_id) })));
-      }).catch(() => undefined);
-  }, [isSuperAdmin]);
+    if (!allowed) return;
+
+    const requests: Promise<any>[] = [api.get('/api/admin/applications')];
+    if (isSuperAdmin) requests.push(api.get('/api/admin/companies'));
+
+    void Promise.all(requests)
+      .then(([applicationsResponse, companiesResponse]) => {
+        setApplications((applicationsResponse.data?.data ?? []).map((item: any) => ({
+          label: item.name,
+          value: Number(item.id),
+          company_id: Number(item.company_id),
+        })));
+
+        if (companiesResponse) {
+          setCompanies((companiesResponse.data?.data ?? []).map((item: any) => ({
+            label: item.name,
+            value: Number(item.id),
+          })));
+        }
+      })
+      .catch(() => undefined);
+  }, [allowed, isSuperAdmin]);
 
   const visibleFields = useMemo(() => config.fields.filter((field) => isSuperAdmin || !['company_id', 'empresa_id'].includes(field.name)), [config.fields, isSuperAdmin]);
   const filtered = useMemo(() => {
