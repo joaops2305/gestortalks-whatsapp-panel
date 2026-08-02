@@ -96,21 +96,43 @@ export function AdminPage({title,description,actionLabel='Novo',columns,emptyMes
     }catch{ /* páginas continuam funcionando sem lookup */ }
   },[]);
 
-  const load=useCallback(async()=>{
-    if(!config)return; setLoading(true); setError('');
-    try{const response=await api.get(config.endpoint); const source=response.data?.data??[]; setItems(source.map((item:any)=>({...config.toRow(item),__raw:item})));}
-    catch(requestError:any){setError(requestError?.response?.data?.error||'Não foi possível carregar os registros.');}
-    finally{setLoading(false);}
+  const load=useCallback(async(silent=false)=>{
+    if(!config)return;
+    if(!silent){setLoading(true);setError('');}
+    try{
+      const response=await api.get(config.endpoint);
+      const source=response.data?.data??[];
+      setItems(source.map((item:any)=>({...config.toRow(item),__raw:item})));
+    }catch(requestError:any){
+      if(!silent)setError(requestError?.response?.data?.error||'Não foi possível carregar os registros.');
+    }finally{
+      if(!silent)setLoading(false);
+    }
   },[config]);
 
-  useEffect(()=>{void load();void loadLookups();},[load,loadLookups]);
+  useEffect(()=>{
+    void load();
+    void loadLookups();
+  },[load,loadLookups]);
+
+  useEffect(()=>{
+    if(title!=='Instâncias')return;
+
+    const timer=window.setInterval(()=>{
+      if(document.hidden||open||saving||qrOpen)return;
+      void load(true);
+    },5000);
+
+    return()=>window.clearInterval(timer);
+  },[title,load,open,saving,qrOpen]);
+
   const filteredItems=items.filter(item=>Object.values(item).some(value=>typeof value!=='object'&&String(value).toLowerCase().includes(search.toLowerCase())));
   function closeDialog(){setOpen(false);setEditingId(null);setValues(initialValues(fields));}
   function startEdit(row:Record<string,any>){const raw=row.__raw??{};const next=initialValues(fields);for(const field of fields){if(field.name==='password'||field.name==='secret')continue;const rawValue=raw[field.name];if(field.type==='boolean')next[field.name]=boolStatus(rawValue);else if(field.name==='events'&&Array.isArray(rawValue))next[field.name]=rawValue.join(',');else next[field.name]=rawValue??'';}setValues(next);setEditingId(Number(row.id));setOpen(true);}
 
   async function submit(event:FormEvent){event.preventDefault();if(!config)return;setSaving(true);setError('');setGeneratedKey('');try{const payload=config.toPayload(values);const response=editingId?await api.put(`${config.endpoint}/${editingId}`,payload):await api.post(config.endpoint,payload);if(response.data?.api_key)setGeneratedKey(response.data.api_key);setMessage(editingId?'Registro atualizado com sucesso.':'Registro cadastrado com sucesso.');closeDialog();await Promise.all([load(),loadLookups()]);}catch(requestError:any){setError(requestError?.response?.data?.error||'Não foi possível salvar o registro.');}finally{setSaving(false);}}
   async function remove(row:Record<string,any>){if(!config||!window.confirm(`Excluir ${row.Nome||row.id}?`))return;try{await api.delete(`${config.endpoint}/${row.id}`);setMessage('Registro excluído com sucesso.');await load();}catch(requestError:any){setError(requestError?.response?.data?.error||'Não foi possível excluir o registro.');}}
-  async function instanceAction(id:number,action:'connect'|'disconnect'|'logout'){try{await api.post(`/api/instances/${id}/${action}`);setMessage(action==='connect'?'Conexão iniciada.':action==='logout'?'Logout realizado.':'Instância desconectada.');await load();}catch(requestError:any){setError(requestError?.response?.data?.error||'Não foi possível executar a ação.');}}
+  async function instanceAction(id:number,action:'connect'|'disconnect'|'logout'){try{await api.post(`/api/instances/${id}/${action}`);setMessage(action==='connect'?'Conexão iniciada.':action==='logout'?'Logout realizado.':'Instância desconectada.');await load(true);}catch(requestError:any){setError(requestError?.response?.data?.error||'Não foi possível executar a ação.');}}
   async function showQr(id:number){try{const response=await api.get(`/api/instances/${id}/qrcode`);setQrCode(response.data?.data?.qrCode??null);setQrStatus(response.data?.data?.status??'');setQrOpen(true);}catch(requestError:any){setError(requestError?.response?.data?.error||'Não foi possível consultar o QR Code.');}}
 
   const getOptions=(field:FieldConfig):Option[]=>{if(field.lookup==='companies')return companies;if(field.lookup==='applications'){const companyId=Number(values.company_id||values.empresa_id||0);return companyId?applications.filter(item=>item.company_id===companyId):applications;}return field.options??[];};
@@ -124,7 +146,7 @@ export function AdminPage({title,description,actionLabel='Novo',columns,emptyMes
     </CardContent></Card>
   </Stack>
   <Dialog open={open} onClose={saving?undefined:closeDialog} fullWidth maxWidth="sm"><Stack component="form" onSubmit={submit}><DialogTitle>{editingId?`Editar ${title}`:actionLabel}</DialogTitle><DialogContent><Stack spacing={2.2} pt={1}>{fields.map(field=>field.type==='boolean'?<Stack key={field.name} direction="row" justifyContent="space-between" alignItems="center"><Typography>{field.label}</Typography><Switch checked={Boolean(values[field.name])} onChange={event=>setValues(current=>({...current,[field.name]:event.target.checked}))}/></Stack>:(field.type==='select'||field.lookup)?<FormControl key={field.name} fullWidth required={field.required}><InputLabel>{field.label}</InputLabel><Select label={field.label} value={String(values[field.name]??'')} onChange={event=>setValues(current=>({...current,[field.name]:event.target.value}))}>{!field.required&&<MenuItem value=""><em>Nenhum</em></MenuItem>}{getOptions(field).map(option=><MenuItem key={String(option.value)} value={option.value}>{option.label}</MenuItem>)}</Select></FormControl>:<TextField key={field.name} label={field.label} type={field.type??'text'} required={field.required&&!(editingId&&(field.name==='password'||field.name==='secret'))} fullWidth value={String(values[field.name]??'')} onChange={event=>setValues(current=>({...current,[field.name]:event.target.value}))}/>)}</Stack></DialogContent><DialogActions sx={{px:3,pb:3}}><Button onClick={closeDialog} disabled={saving}>Cancelar</Button><Button type="submit" variant="contained" disabled={saving}>{saving?'Salvando...':'Salvar'}</Button></DialogActions></Stack></Dialog>
-  <QrCodeDialog open={qrOpen} onClose={()=>setQrOpen(false)} qrCode={qrCode} status={qrStatus}/>
+  <QrCodeDialog open={qrOpen} onClose={()=>setQrOpen(false)} qrCode={qrCode} instanceName={qrStatus||'instância'}/>
   <Snackbar open={Boolean(message)} autoHideDuration={3500} onClose={()=>setMessage('')} message={message}/>
   </AppShell></AuthGuard>;
 }
