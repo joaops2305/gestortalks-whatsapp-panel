@@ -14,6 +14,7 @@ import { FormEvent, useEffect, useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { AppShell } from '@/components/AppShell';
 import { AuthGuard } from '@/components/AuthGuard';
+import { PaginationBar } from '@/components/ui/PaginationBar';
 import { api } from '@/services/api';
 import { getUser } from '@/services/auth';
 import { resourceConfigs, type ResourceField } from './resource.config';
@@ -34,6 +35,8 @@ export function ResourceCrudPage({ resource }: { resource: keyof typeof resource
   const allowed = !config.superadminOnly || isSuperAdmin;
   const { items, loading, error, setError, load, upsertLocal, removeLocal } = useResource<any>(config.endpoint, allowed);
   const [search, setSearch] = useState('');
+  const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = useState(10);
   const [open, setOpen] = useState(false);
   const [editingId, setEditingId] = useState<number | null>(null);
   const [values, setValues] = useState<Record<string, any>>(() => initialValues(config.fields, companyId));
@@ -52,8 +55,15 @@ export function ResourceCrudPage({ resource }: { resource: keyof typeof resource
     }).catch(() => undefined);
   }, [isSuperAdmin]);
 
-  const visibleFields = useMemo(() => config.fields.filter((field) => isSuperAdmin || !['company_id','empresa_id'].includes(field.name)), [config.fields, isSuperAdmin]);
+  const visibleFields = useMemo(() => config.fields.filter((field) => isSuperAdmin || !['company_id', 'empresa_id'].includes(field.name)), [config.fields, isSuperAdmin]);
   const filtered = useMemo(() => items.filter((item) => Object.values(item).some((value) => String(Array.isArray(value) ? value.join(', ') : value ?? '').toLowerCase().includes(search.toLowerCase()))), [items, search]);
+  const paginated = useMemo(() => filtered.slice((page - 1) * pageSize, page * pageSize), [filtered, page, pageSize]);
+
+  useEffect(() => { setPage(1); }, [search, pageSize]);
+  useEffect(() => {
+    const maxPage = Math.max(1, Math.ceil(filtered.length / pageSize));
+    if (page > maxPage) setPage(maxPage);
+  }, [filtered.length, page, pageSize]);
 
   const close = () => { setOpen(false); setEditingId(null); setValues(initialValues(config.fields, companyId)); };
   const optionsFor = (field: ResourceField) => field.lookup === 'companies'
@@ -115,11 +125,12 @@ export function ResourceCrudPage({ resource }: { resource: keyof typeof resource
           {config.columns.map((column) => <Typography key={column.key} variant="caption" fontWeight={800} sx={{ flex: 1 }}>{column.label}</Typography>)}
           <Typography variant="caption" fontWeight={800} sx={{ width: 92 }}>Ações</Typography>
         </Stack>
-        {loading ? <Stack alignItems="center" py={5}><CircularProgress /></Stack> : filtered.length === 0 ? <Alert severity="info" sx={{ mt: 2 }}>Nenhum registro encontrado.</Alert> : filtered.map((item) => <Stack key={item.id} direction="row" spacing={2} alignItems="center" sx={{ px: 2, py: 1.5, borderBottom: '1px solid', borderColor: 'divider' }}>
+        {loading ? <Stack alignItems="center" py={5}><CircularProgress /></Stack> : paginated.length === 0 ? <Alert severity="info" sx={{ mt: 2 }}>Nenhum registro encontrado.</Alert> : paginated.map((item) => <Stack key={item.id} direction="row" spacing={2} alignItems="center" sx={{ px: 2, py: 1.5, borderBottom: '1px solid', borderColor: 'divider' }}>
           {config.columns.map((column) => { const value = item[column.key]; const display = Array.isArray(value) ? value.join(', ') : value ?? '-'; return <Box key={column.key} sx={{ flex: 1, minWidth: 0 }}>{column.key === 'status' ? <Chip size="small" label={enabled(value) ? 'Ativo' : 'Inativo'} color={enabled(value) ? 'success' : 'default'} /> : <Typography variant="body2" noWrap title={String(display)}>{String(display)}</Typography>}</Box>; })}
           <Stack direction="row" sx={{ width: 92 }}><Tooltip title="Editar"><IconButton onClick={() => edit(item)}><EditRoundedIcon /></IconButton></Tooltip><Tooltip title="Excluir"><IconButton color="error" onClick={() => void remove(item)}><DeleteOutlineRoundedIcon /></IconButton></Tooltip></Stack>
         </Stack>)}
       </Box></Box>
+      {!loading && <PaginationBar page={page} pageSize={pageSize} total={filtered.length} onPageChange={setPage} onPageSizeChange={(value) => { setPageSize(value); setPage(1); }} />}
     </CardContent></Card>
   </Stack>
   <Dialog open={open} onClose={saving ? undefined : close} fullWidth maxWidth="sm"><Stack component="form" onSubmit={submit}><DialogTitle>{editingId ? `Editar ${config.title}` : config.actionLabel}</DialogTitle><DialogContent><Stack spacing={2.2} pt={1}>
