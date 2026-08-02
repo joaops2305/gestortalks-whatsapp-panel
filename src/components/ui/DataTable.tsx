@@ -1,6 +1,6 @@
 'use client';
 
-import { Paper, Skeleton, Table, TableBody, TableCell, TableContainer, TableHead, TablePagination, TableRow, Typography } from '@mui/material';
+import { Paper, Skeleton, Table, TableBody, TableCell, TableContainer, TableHead, TablePagination, TableRow } from '@mui/material';
 import type { ReactNode } from 'react';
 import { EmptyState } from './EmptyState';
 
@@ -54,7 +54,7 @@ export function DataTable<T>({ rows, columns, loading = false, getRowKey, page =
           onPageChange={(_, nextPage) => onPageChange?.(nextPage)}
           onRowsPerPageChange={(event) => onRowsPerPageChange?.(Number(event.target.value))}
           labelRowsPerPage="Itens por página"
-          labelDisplayedRows={({ from, to, count }) => <Typography variant="caption">{from}–{to} de {count}</Typography> as any}
+          labelDisplayedRows={({ from, to, count }) => `${from}–${to} de ${count}`}
         />
       )}
     </Paper>
