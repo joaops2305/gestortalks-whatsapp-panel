@@ -1,2 +1,5 @@
-import { AdminPage } from '@/components/AdminPage';
-export default function AplicacoesPage() { return <AdminPage title="Aplicações" description="Gerencie sistemas externos, permissões, limites e integrações." actionLabel="Nova aplicação" columns={['Nome', 'Empresa', 'Descrição', 'Rate limit', 'Status']} />; }
+import { ResourceCrudPage } from '@/modules/platform/ResourceCrudPage';
+
+export default function AplicacoesPage() {
+  return <ResourceCrudPage resource="applications" />;
+}
