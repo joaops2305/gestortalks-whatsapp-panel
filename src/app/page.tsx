@@ -50,7 +50,7 @@ export default function DashboardPage() {
             <>
               <Grid container spacing={2}>
                 {cards.map(([label, value]) => (
-                  <Grid key={label} size={{ xs: 12, sm: 6, lg: 3 }}>
+                  <Grid item xs={12} sm={6} lg={3} key={label}>
                     <Card elevation={0} sx={{ border: '1px solid', borderColor: 'divider', height: '100%' }}>
                       <CardContent>
                         <Typography color="text.secondary" variant="body2">{label}</Typography>
