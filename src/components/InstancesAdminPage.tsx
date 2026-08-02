@@ -65,9 +65,9 @@ export function InstancesAdminPage() {
 
     {error && <Alert severity="error" onClose={() => setError('')}>{error}</Alert>}
 
-    <Card variant="outlined" sx={{ overflow: 'hidden', borderRadius: 3 }}>
-      <Box sx={{ p: 2.5 }}>
-        <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1.5}>
+    <Card variant="outlined" sx={{ overflow: 'hidden' }}>
+      <Box sx={{ p: 2.5, bgcolor: 'background.paper' }}>
+        <Stack direction={{ xs: 'column', lg: 'row' }} spacing={1.5}>
           <TextField fullWidth size="small" value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Buscar por nome, sessão, empresa, número ou status..." InputProps={{ startAdornment: <InputAdornment position="start"><SearchRoundedIcon fontSize="small" /></InputAdornment> }} />
           <Button variant="contained" startIcon={<RefreshRoundedIcon />} onClick={() => void load()} disabled={loading} sx={{ minWidth: 120 }}>Atualizar</Button>
         </Stack>
