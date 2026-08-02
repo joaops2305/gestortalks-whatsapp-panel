@@ -1,6 +1,6 @@
 'use client';
 
-import { Box, MenuItem, Pagination, Select, Stack, Typography } from '@mui/material';
+import { MenuItem, Pagination, Select, Stack, Typography } from '@mui/material';
 
 export function PaginationBar({
   page,
@@ -16,43 +16,62 @@ export function PaginationBar({
   onPageSizeChange: (pageSize: number) => void;
 }) {
   const pages = Math.max(1, Math.ceil(total / pageSize));
-  const start = total === 0 ? 0 : (page - 1) * pageSize + 1;
-  const end = Math.min(page * pageSize, total);
+  const currentPage = Math.min(page, pages);
+  const start = total === 0 ? 0 : (currentPage - 1) * pageSize + 1;
+  const end = Math.min(currentPage * pageSize, total);
 
   return (
     <Stack
       direction={{ xs: 'column', sm: 'row' }}
       spacing={2}
-      alignItems={{ sm: 'center' }}
+      alignItems={{ xs: 'stretch', sm: 'center' }}
       justifyContent="space-between"
-      sx={{ pt: 2 }}
+      sx={{
+        px: { xs: 1.5, sm: 2 },
+        py: 1.5,
+        borderTop: '1px solid',
+        borderColor: 'divider',
+        minHeight: 64,
+      }}
     >
       <Stack direction="row" spacing={1} alignItems="center">
-        <Typography variant="body2" color="text.secondary">Itens por página:</Typography>
+        <Typography variant="body2" color="text.secondary" sx={{ whiteSpace: 'nowrap' }}>
+          Itens por página:
+        </Typography>
         <Select
           size="small"
           value={pageSize}
           onChange={(event) => onPageSizeChange(Number(event.target.value))}
           sx={{ minWidth: 82 }}
         >
-          {[10, 25, 50, 100].map((value) => <MenuItem key={value} value={value}>{value}</MenuItem>)}
+          {[10, 25, 50, 100].map((value) => (
+            <MenuItem key={value} value={value}>{value}</MenuItem>
+          ))}
         </Select>
       </Stack>
 
-      <Box>
-        <Typography variant="caption" color="text.secondary" sx={{ display: 'block', textAlign: { xs: 'left', sm: 'right' }, mb: 0.5 }}>
+      <Stack
+        direction={{ xs: 'column', sm: 'row' }}
+        spacing={{ xs: 1, sm: 1.5 }}
+        alignItems={{ xs: 'flex-start', sm: 'center' }}
+        justifyContent="flex-end"
+      >
+        <Typography variant="body2" color="text.secondary" sx={{ whiteSpace: 'nowrap' }}>
           {start}-{end} de {total}
         </Typography>
+
         <Pagination
-          page={Math.min(page, pages)}
+          page={currentPage}
           count={pages}
           onChange={(_, value) => onPageChange(value)}
           color="primary"
           size="small"
           showFirstButton
           showLastButton
+          siblingCount={1}
+          boundaryCount={1}
         />
-      </Box>
+      </Stack>
     </Stack>
   );
 }
