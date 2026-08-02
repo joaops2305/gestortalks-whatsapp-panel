@@ -31,6 +31,7 @@ const active = (value: unknown) => Number(value) === 1 || value === true;
 const status = (value: unknown) => active(value) ? 'Ativo' : 'Inativo';
 const companyField = (name='company_id'): Field => ({ name, label:'Empresa', type:'select', lookup:'companies', required:true });
 const appField: Field = { name:'application_id', label:'Aplicação', type:'select', lookup:'applications' };
+const wait = (milliseconds:number) => new Promise(resolve => window.setTimeout(resolve, milliseconds));
 
 const configs: Record<string, Config> = {
   Empresas: {
@@ -105,6 +106,7 @@ export function AdminPage({ title, description, actionLabel='Novo', columns, emp
   const [search,setSearch]=useState(''); const [loading,setLoading]=useState(true); const [saving,setSaving]=useState(false);
   const [error,setError]=useState(''); const [message,setMessage]=useState(''); const [generatedKey,setGeneratedKey]=useState('');
   const [qrOpen,setQrOpen]=useState(false); const [qrCode,setQrCode]=useState<string|null>(null); const [qrName,setQrName]=useState('');
+  const [connectingId,setConnectingId]=useState<number|null>(null);
 
   useEffect(()=>{ if (restricted && !isSuperAdmin) router.replace('/'); },[restricted,isSuperAdmin,router]);
 
@@ -118,21 +120,18 @@ export function AdminPage({ title, description, actionLabel='Novo', columns, emp
   },[isSuperAdmin]);
 
   const load=useCallback(async(silent=false)=>{
-    if(!config || (restricted&&!isSuperAdmin)) return;
+    if(!config || (restricted&&!isSuperAdmin)) return [] as any[];
     if(!silent) setLoading(true);
     try{
       const response=await api.get(config.endpoint);
-      setItems((response.data?.data??[]).map((item:any)=>({...config.toRow(item),__raw:item})));
-    }catch(e:any){if(!silent)setError(e?.response?.data?.error||'Não foi possível carregar os registros.');}
+      const source=response.data?.data??[];
+      setItems(source.map((item:any)=>({...config.toRow(item),__raw:item})));
+      return source;
+    }catch(e:any){if(!silent)setError(e?.response?.data?.error||'Não foi possível carregar os registros.');return [] as any[];}
     finally{if(!silent)setLoading(false);}
   },[config,restricted,isSuperAdmin]);
 
   useEffect(()=>{void load();void loadLookups();},[load,loadLookups]);
-  useEffect(()=>{
-    if(title!=='Instâncias')return;
-    const timer=window.setInterval(()=>{if(!document.hidden&&!open&&!saving&&!qrOpen)void load(true);},5000);
-    return()=>window.clearInterval(timer);
-  },[title,load,open,saving,qrOpen]);
 
   const filtered=items.filter(item=>Object.values(item).some(value=>typeof value!=='object'&&String(value).toLowerCase().includes(search.toLowerCase())));
   const options=(field:Field)=>field.lookup==='companies'?companies:field.lookup==='applications'?applications.filter(a=>!values.company_id||a.company_id===Number(values.company_id)):field.options??[];
@@ -159,7 +158,36 @@ export function AdminPage({ title, description, actionLabel='Novo', columns, emp
   }
 
   async function remove(row:Record<string,any>){if(!window.confirm(`Excluir ${row.Nome||row.id}?`))return;try{await api.delete(`${config.endpoint}/${row.id}`);await load();setMessage('Registro excluído.');}catch(e:any){setError(e?.response?.data?.error||'Não foi possível excluir.');}}
-  async function instanceAction(id:number,action:'connect'|'disconnect'|'logout'){try{await api.post(`/api/instances/${id}/${action}`);setMessage('Ação executada.');await load(true);}catch(e:any){setError(e?.response?.data?.error||'Falha na ação.');}}
+
+  async function instanceAction(id:number,action:'connect'|'disconnect'|'logout'){
+    try{
+      await api.post(`/api/instances/${id}/${action}`);
+      if(action!=='connect'){
+        setMessage('Ação executada.');
+        await load(true);
+        return;
+      }
+
+      setConnectingId(id);
+      setMessage('Conexão iniciada. Acompanhando o status...');
+
+      for(let attempt=0;attempt<20;attempt+=1){
+        await wait(1500);
+        const source=await load(true);
+        const current=source.find((item:any)=>Number(item.id)===id);
+        const currentStatus=String(current?.status??'');
+
+        if(['connected','qr','error','logged_out'].includes(currentStatus)){
+          if(currentStatus==='connected')setMessage('Instância conectada com sucesso.');
+          else if(currentStatus==='qr')setMessage('QR Code disponível para leitura.');
+          else setMessage(`Status da instância: ${currentStatus}.`);
+          break;
+        }
+      }
+    }catch(e:any){setError(e?.response?.data?.error||'Falha na ação.');}
+    finally{setConnectingId(null);}
+  }
+
   async function showQr(row:Record<string,any>){try{const response=await api.get(`/api/instances/${row.id}/qrcode`);setQrCode(response.data?.data?.qrCode??null);setQrName(String(row.Nome||'instância'));setQrOpen(true);}catch(e:any){setError(e?.response?.data?.error||'Não foi possível consultar o QR.');}}
 
   if(restricted&&!isSuperAdmin)return null;
@@ -177,7 +205,7 @@ export function AdminPage({ title, description, actionLabel='Novo', columns, emp
         <Stack direction="row" spacing={2} sx={{px:2,py:1.5,bgcolor:'action.hover',borderRadius:2}}>{columns.map(c=><Typography key={c} variant="caption" fontWeight={800} sx={{flex:1}}>{c}</Typography>)}<Typography variant="caption" fontWeight={800} sx={{width:title==='Instâncias'?220:90}}>Ações</Typography></Stack>
         {loading?<Stack alignItems="center" py={5}><CircularProgress/></Stack>:filtered.length===0?<Alert severity="info" sx={{mt:2}}>{emptyMessage}</Alert>:filtered.map(row=><Stack key={row.id} direction="row" spacing={2} alignItems="center" sx={{px:2,py:1.5,borderBottom:'1px solid',borderColor:'divider'}}>
           {columns.map(c=><Box key={c} sx={{flex:1,minWidth:0}}>{c==='Status'?<Chip size="small" label={String(row[c]??'-')} color={String(row[c]).includes('connect')||String(row[c]).includes('Ativo')?'success':'default'}/>:<Typography variant="body2" noWrap>{String(row[c]??'-')}</Typography>}</Box>)}
-          <Stack direction="row" sx={{width:title==='Instâncias'?220:90}}>{title==='Instâncias'&&<><Tooltip title="Conectar"><IconButton color="success" onClick={()=>void instanceAction(row.id,'connect')}><LinkRoundedIcon/></IconButton></Tooltip><Tooltip title="QR Code"><IconButton onClick={()=>void showQr(row)}><QrCode2RoundedIcon/></IconButton></Tooltip><Tooltip title="Desconectar"><IconButton onClick={()=>void instanceAction(row.id,'disconnect')}><LinkOffRoundedIcon/></IconButton></Tooltip><Tooltip title="Logout"><IconButton color="warning" onClick={()=>void instanceAction(row.id,'logout')}><LogoutRoundedIcon/></IconButton></Tooltip></>}<IconButton onClick={()=>edit(row)}><EditRoundedIcon/></IconButton><IconButton color="error" onClick={()=>void remove(row)}><DeleteOutlineRoundedIcon/></IconButton></Stack>
+          <Stack direction="row" sx={{width:title==='Instâncias'?220:90}}>{title==='Instâncias'&&<><Tooltip title="Conectar"><span><IconButton color="success" disabled={connectingId===Number(row.id)} onClick={()=>void instanceAction(row.id,'connect')}>{connectingId===Number(row.id)?<CircularProgress size={20}/>:<LinkRoundedIcon/>}</IconButton></span></Tooltip><Tooltip title="QR Code"><IconButton onClick={()=>void showQr(row)}><QrCode2RoundedIcon/></IconButton></Tooltip><Tooltip title="Desconectar"><IconButton onClick={()=>void instanceAction(row.id,'disconnect')}><LinkOffRoundedIcon/></IconButton></Tooltip><Tooltip title="Logout"><IconButton color="warning" onClick={()=>void instanceAction(row.id,'logout')}><LogoutRoundedIcon/></IconButton></Tooltip></>}<IconButton onClick={()=>edit(row)}><EditRoundedIcon/></IconButton><IconButton color="error" onClick={()=>void remove(row)}><DeleteOutlineRoundedIcon/></IconButton></Stack>
         </Stack>)}
       </Box></Box>
     </CardContent></Card>
