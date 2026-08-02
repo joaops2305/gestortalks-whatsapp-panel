@@ -120,9 +120,9 @@ export function ResourceCrudPage({ resource }: { resource: keyof typeof resource
     {error && <Alert severity="error" onClose={() => setError('')}>{error}</Alert>}
     {generatedKey && <Alert severity="warning"><strong>Copie a API Key agora:</strong><Box component="code" sx={{ display: 'block', mt: 1, wordBreak: 'break-all' }}>{generatedKey}</Box></Alert>}
 
-    <Card variant="outlined" sx={{ overflow: 'hidden', borderRadius: 3 }}>
-      <Box sx={{ p: 2.5 }}>
-        <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1.5}>
+    <Card variant="outlined" sx={{ overflow: 'hidden' }}>
+      <Box sx={{ p: 2.5, bgcolor: 'background.paper' }}>
+        <Stack direction={{ xs: 'column', lg: 'row' }} spacing={1.5}>
           <TextField fullWidth size="small" value={search} onChange={(event) => setSearch(event.target.value)} placeholder={`Buscar em ${config.title.toLowerCase()}...`} InputProps={{ startAdornment: <InputAdornment position="start"><SearchRoundedIcon fontSize="small" /></InputAdornment> }} />
           <Button variant="contained" startIcon={<RefreshRoundedIcon />} onClick={() => void load()} disabled={loading} sx={{ minWidth: 120 }}>Atualizar</Button>
         </Stack>
