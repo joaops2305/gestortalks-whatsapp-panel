@@ -25,6 +25,10 @@ export function useInstances() {
     void load();
   }, [load]);
 
+  const insertLocal = useCallback((instance: WhatsAppInstance) => {
+    setItems((current) => [instance, ...current.filter((item) => item.id !== instance.id)]);
+  }, []);
+
   const patch = useCallback((id: number, changes: Partial<WhatsAppInstance>) => {
     setItems((current) => current.map((item) => item.id === id ? { ...item, ...changes } : item));
   }, []);
@@ -33,5 +37,5 @@ export function useInstances() {
     setItems((current) => current.filter((item) => item.id !== id));
   }, []);
 
-  return { items, loading, error, setError, load, patch, removeLocal };
+  return { items, loading, error, setError, load, insertLocal, patch, removeLocal };
 }
