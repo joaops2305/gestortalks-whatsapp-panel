@@ -3,6 +3,7 @@
 import DashboardRoundedIcon from '@mui/icons-material/DashboardRounded';
 import BusinessRoundedIcon from '@mui/icons-material/BusinessRounded';
 import PeopleRoundedIcon from '@mui/icons-material/PeopleRounded';
+import PersonRoundedIcon from '@mui/icons-material/PersonRounded';
 import PhoneAndroidRoundedIcon from '@mui/icons-material/PhoneAndroidRounded';
 import KeyRoundedIcon from '@mui/icons-material/KeyRounded';
 import HubRoundedIcon from '@mui/icons-material/HubRounded';
@@ -37,6 +38,7 @@ const allItems = [
   ['Logs', '/logs', DescriptionRoundedIcon, false],
   ['Configurações', '/configuracoes', SettingsRoundedIcon, false],
   ['Documentação', '/swagger', MenuBookRoundedIcon, false],
+  ['Meu perfil', '/perfil', PersonRoundedIcon, false],
 ] as const;
 
 export function AppShell({ children }: { children: React.ReactNode }) {
@@ -75,6 +77,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
           <IconButton sx={{ display: { md: 'none' }, mr: 1 }} onClick={() => setMobileOpen(true)}><MenuRoundedIcon /></IconButton>
           <Typography fontWeight={700} sx={{ flexGrow: 1 }}>{isSuperAdmin ? 'Administração global' : 'Minha empresa'}</Typography>
           <Stack direction="row" spacing={1}>
+            <Tooltip title="Meu perfil"><IconButton component={Link} href="/perfil"><PersonRoundedIcon /></IconButton></Tooltip>
             <Tooltip title={mode === 'light' ? 'Ativar tema escuro' : 'Ativar tema claro'}><IconButton onClick={toggleMode}>{mode === 'light' ? <DarkModeRoundedIcon /> : <LightModeRoundedIcon />}</IconButton></Tooltip>
             <Tooltip title="Sair"><IconButton onClick={() => { clearSession(); router.replace('/login'); }}><LogoutRoundedIcon /></IconButton></Tooltip>
           </Stack>
