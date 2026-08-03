@@ -54,9 +54,9 @@ export const resourceConfigs: Record<string, ResourceConfig> = {
   },
   applications: {
     title: 'Aplicações', description: 'Cadastre aplicações externas que consomem a API.', actionLabel: 'Nova aplicação', endpoint: '/api/admin/applications',
-    fields: [{ name: 'name', label: 'Nome da aplicação', required: true }, company(), { name: 'description', label: 'Descrição' }, { name: 'webhook_url', label: 'URL do webhook', type: 'url' }, { name: 'rate_limit', label: 'Limite por minuto', type: 'number' }, { name: 'status', label: 'Ativa', type: 'boolean' }],
+    fields: [{ name: 'name', label: 'Nome da aplicação', required: true }, company(), { name: 'description', label: 'Descrição' }, { name: 'rate_limit', label: 'Limite por minuto', type: 'number' }, { name: 'status', label: 'Ativa', type: 'boolean' }],
     columns: [{ key: 'name', label: 'Nome' }, { key: 'company_name', label: 'Empresa' }, { key: 'description', label: 'Descrição' }, { key: 'rate_limit', label: 'Rate limit' }, { key: 'status', label: 'Status' }],
-    toPayload: (v) => ({ ...v, company_id: Number(v.company_id), rate_limit: Number(v.rate_limit || 300), webhook_url: v.webhook_url || null }),
+    toPayload: (v) => ({ ...v, company_id: Number(v.company_id), rate_limit: Number(v.rate_limit || 300) }),
   },
   apiKeys: {
     title: 'API Keys', description: 'Crie e revogue chaves de integração.', actionLabel: 'Nova API Key', endpoint: '/api/admin/api-keys',
