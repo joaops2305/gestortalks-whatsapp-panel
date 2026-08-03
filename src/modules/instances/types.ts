@@ -12,6 +12,8 @@ export type WhatsAppInstance = {
   id: number;
   empresa_id: number;
   company_name?: string | null;
+  application_id?: number | null;
+  application_name?: string | null;
   external_instance_id?: number | null;
   session: string;
   name?: string | null;
