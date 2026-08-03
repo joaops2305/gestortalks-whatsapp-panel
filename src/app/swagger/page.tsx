@@ -3,17 +3,24 @@
 import DescriptionRoundedIcon from '@mui/icons-material/DescriptionRounded';
 import OpenInNewRoundedIcon from '@mui/icons-material/OpenInNewRounded';
 import RefreshRoundedIcon from '@mui/icons-material/RefreshRounded';
-import { Box, Button, Card, Stack, Typography } from '@mui/material';
+import VpnKeyRoundedIcon from '@mui/icons-material/VpnKeyRounded';
+import { Box, Button, Card, Stack, TextField, Typography } from '@mui/material';
 import Link from 'next/link';
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { AppShell } from '@/components/AppShell';
 import { AuthGuard } from '@/components/AuthGuard';
+import { getToken } from '@/services/auth';
 
 export default function SwaggerPage() {
   const [reloadKey, setReloadKey] = useState(1);
+  const [authorizationToken, setAuthorizationToken] = useState('');
   const apiUrl = (process.env.NEXT_PUBLIC_API_URL ?? 'http://127.0.0.1:3002').replace(/\/$/, '');
   const openApiUrl = `${apiUrl}/openapi.json`;
   const externalSwaggerUrl = `${apiUrl}/docs`;
+
+  useEffect(() => {
+    setAuthorizationToken(getToken() ?? '');
+  }, []);
 
   const swaggerHtml = useMemo(() => `<!doctype html>
 <html lang="pt-BR">
@@ -41,6 +48,7 @@ export default function SwaggerPage() {
     (async function loadSwagger() {
       const loading = document.getElementById('loading');
       const errorBox = document.getElementById('error');
+      const token = ${JSON.stringify(authorizationToken)};
 
       try {
         const specificationUrl = ${JSON.stringify(openApiUrl)} + '?_=' + Date.now();
@@ -70,7 +78,19 @@ export default function SwaggerPage() {
           filter: true,
           tryItOutEnabled: true,
           docExpansion: 'list',
-          defaultModelsExpandDepth: 1
+          defaultModelsExpandDepth: 1,
+          requestInterceptor: function(request) {
+            if (token) {
+              request.headers = request.headers || {};
+              request.headers.Authorization = 'Bearer ' + token;
+            }
+            return request;
+          },
+          onComplete: function() {
+            if (token && window.ui && typeof window.ui.preauthorizeApiKey === 'function') {
+              window.ui.preauthorizeApiKey('bearerAuth', token);
+            }
+          }
         });
       } catch (error) {
         loading.style.display = 'none';
@@ -80,7 +100,11 @@ export default function SwaggerPage() {
     })();
   </script>
 </body>
-</html>`, [openApiUrl, reloadKey]);
+</html>`, [authorizationToken, openApiUrl, reloadKey]);
+
+  function applyAuthorization() {
+    setReloadKey((value) => value + 1);
+  }
 
   return (
     <AuthGuard>
@@ -104,16 +128,38 @@ export default function SwaggerPage() {
             </Stack>
           </Stack>
 
-          <Card variant="outlined" sx={{ overflow: 'hidden', minHeight: 'calc(100vh - 190px)' }}>
+          <Card variant="outlined" sx={{ p: 2 }}>
+            <Stack direction={{ xs: 'column', md: 'row' }} spacing={2} alignItems={{ md: 'center' }}>
+              <TextField
+                fullWidth
+                type="password"
+                label="Token para testar a API"
+                value={authorizationToken}
+                onChange={(event) => setAuthorizationToken(event.target.value.trim())}
+                helperText="Carregado com o token da sessão. Você pode substituir pela API Key global gtwa_user_* do perfil."
+              />
+              <Button
+                variant="contained"
+                startIcon={<VpnKeyRoundedIcon />}
+                onClick={applyAuthorization}
+                disabled={!authorizationToken}
+                sx={{ minWidth: 190, height: 56 }}
+              >
+                Aplicar token
+              </Button>
+            </Stack>
+          </Card>
+
+          <Card variant="outlined" sx={{ overflow: 'hidden', minHeight: 'calc(100vh - 290px)' }}>
             <Box
-              key={reloadKey}
+              key={`${reloadKey}-${authorizationToken ? 'authorized' : 'anonymous'}`}
               component="iframe"
               title="Swagger GestorTalks Whats"
               srcDoc={swaggerHtml}
               sx={{
                 display: 'block',
                 width: '100%',
-                minHeight: 'calc(100vh - 190px)',
+                minHeight: 'calc(100vh - 290px)',
                 border: 0,
                 bgcolor: '#fff',
               }}
