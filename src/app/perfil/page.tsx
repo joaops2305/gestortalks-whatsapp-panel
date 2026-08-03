@@ -41,24 +41,45 @@ export default function PerfilPage() {
   const [password, setPassword] = useState('');
   const [saving, setSaving] = useState(false);
   const [apiKey, setApiKey] = useState<UserApiKey | null>(null);
+  const [apiKeyUnavailable, setApiKeyUnavailable] = useState(false);
   const [generatedKey, setGeneratedKey] = useState('');
   const [tokenDialogOpen, setTokenDialogOpen] = useState(false);
   const [generating, setGenerating] = useState(false);
 
   useEffect(() => {
-    void Promise.all([
-      api.get('/api/auth/me', { skipGlobalSuccess: true } as any),
-      api.get('/api/auth/api-key', { skipGlobalSuccess: true } as any),
-    ]).then(([userResponse, keyResponse]) => {
-      const current = userResponse.data?.user as AuthUser;
-      if (current) {
-        setUser(current);
-        setName(current.name);
-        setEmail(current.email);
-        updateStoredUser(current);
+    let active = true;
+
+    async function loadProfile() {
+      const [userResult, keyResult] = await Promise.allSettled([
+        api.get('/api/auth/me', { skipGlobalSuccess: true, skipGlobalError: true } as any),
+        api.get('/api/auth/api-key', { skipGlobalSuccess: true, skipGlobalError: true } as any),
+      ]);
+
+      if (!active) return;
+
+      if (userResult.status === 'fulfilled') {
+        const current = userResult.value.data?.user as AuthUser;
+        if (current) {
+          setUser(current);
+          setName(current.name);
+          setEmail(current.email);
+          updateStoredUser(current);
+        }
+      } else {
+        notifyError(userResult.reason?.response?.data?.error || 'Não foi possível carregar os dados do perfil.');
       }
-      setApiKey(keyResponse.data?.data ?? null);
-    }).catch(() => undefined);
+
+      if (keyResult.status === 'fulfilled') {
+        setApiKey(keyResult.value.data?.data ?? null);
+        setApiKeyUnavailable(false);
+      } else {
+        setApiKey(null);
+        setApiKeyUnavailable(true);
+      }
+    }
+
+    void loadProfile();
+    return () => { active = false; };
   }, []);
 
   const initials = useMemo(() => (user?.name || 'U').split(/\s+/).slice(0, 2).map((part) => part[0]).join('').toUpperCase(), [user?.name]);
@@ -69,7 +90,7 @@ export default function PerfilPage() {
     try {
       const payload: Record<string, string> = { name: name.trim(), email: email.trim() };
       if (password) payload.password = password;
-      const response = await api.put('/api/auth/profile', payload, { skipGlobalSuccess: true } as any);
+      const response = await api.put('/api/auth/profile', payload, { skipGlobalSuccess: true, skipGlobalError: true } as any);
       const updated = response.data?.user as AuthUser;
       setUser(updated);
       updateStoredUser(updated);
@@ -85,13 +106,14 @@ export default function PerfilPage() {
   async function regenerateApiKey() {
     setGenerating(true);
     try {
-      const response = await api.post('/api/auth/api-key/regenerate', {}, { skipGlobalSuccess: true } as any);
+      const response = await api.post('/api/auth/api-key/regenerate', {}, { skipGlobalSuccess: true, skipGlobalError: true } as any);
       setApiKey(response.data?.data ?? null);
+      setApiKeyUnavailable(false);
       setGeneratedKey(response.data?.api_key ?? '');
       setTokenDialogOpen(true);
       notifySuccess('API Key global gerada com sucesso.');
     } catch (error: any) {
-      notifyError(error?.response?.data?.error || 'Não foi possível gerar a API Key.');
+      notifyError(error?.response?.data?.error || 'Não foi possível gerar a API Key. Execute npm run migrate no backend.');
     } finally {
       setGenerating(false);
     }
@@ -137,12 +159,14 @@ export default function PerfilPage() {
                       <KeyRoundedIcon color="primary" fontSize="small" />
                       <Typography variant="overline" color="text.secondary" fontWeight={800}>API Key global</Typography>
                     </Stack>
-                    {apiKey ? <>
+                    {apiKeyUnavailable ? (
+                      <Typography color="warning.main">Estrutura da API Key ainda não está disponível. Execute <strong>npm run migrate</strong> no backend.</Typography>
+                    ) : apiKey ? <>
                       <Box component="code" sx={{ p: 1.5, borderRadius: 2, bgcolor: 'action.hover', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{apiKey.key_prefix}...</Box>
                       <Chip size="small" label={Number(apiKey.status) === 1 ? 'Ativa' : 'Revogada'} color={Number(apiKey.status) === 1 ? 'success' : 'default'} sx={{ alignSelf: 'flex-start' }} />
                       <Typography variant="caption" color="text.secondary">Último uso: {apiKey.last_used_at ? new Date(apiKey.last_used_at).toLocaleString('pt-BR') : 'Nunca utilizada'}</Typography>
                     </> : <Typography color="text.secondary">Você ainda não possui uma API Key.</Typography>}
-                    <Button variant="contained" onClick={() => void regenerateApiKey()} disabled={generating}>{generating ? 'Gerando...' : apiKey ? 'Regenerar API Key' : 'Gerar API Key'}</Button>
+                    <Button variant="contained" onClick={() => void regenerateApiKey()} disabled={generating || apiKeyUnavailable}>{generating ? 'Gerando...' : apiKey ? 'Regenerar API Key' : 'Gerar API Key'}</Button>
                     <Typography variant="caption" color="text.secondary">Essa chave é única para o seu usuário e pode acessar as rotas permitidas da sua empresa.</Typography>
                   </Stack>
                 </CardContent>
