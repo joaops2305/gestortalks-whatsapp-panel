@@ -5,6 +5,7 @@ export type AuthUser = {
   email: string;
   role: string;
   must_change_password?: boolean;
+  last_login_at?: string | null;
 };
 
 const TOKEN_KEY = 'gtw_token';
@@ -13,6 +14,11 @@ const USER_KEY = 'gtw_user';
 export function saveSession(token: string, user: AuthUser) {
   if (typeof window === 'undefined') return;
   localStorage.setItem(TOKEN_KEY, token);
+  localStorage.setItem(USER_KEY, JSON.stringify(user));
+}
+
+export function updateStoredUser(user: AuthUser) {
+  if (typeof window === 'undefined') return;
   localStorage.setItem(USER_KEY, JSON.stringify(user));
 }
 
