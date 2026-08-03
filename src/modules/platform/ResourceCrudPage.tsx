@@ -27,6 +27,14 @@ const initialValues = (fields: ResourceField[], companyId?: number | null) => Ob
   fields.map((field) => [field.name, field.type === 'boolean' ? true : ((field.name === 'company_id' || field.name === 'empresa_id') && companyId ? companyId : '')]),
 );
 
+type ConfirmationState = {
+  title: string;
+  message: string;
+  confirmLabel: string;
+  color: 'primary' | 'warning' | 'error';
+  action: () => Promise<void>;
+};
+
 export function ResourceCrudPage({ resource }: { resource: keyof typeof resourceConfigs }) {
   const config = resourceConfigs[resource];
   const router = useRouter();
@@ -44,6 +52,8 @@ export function ResourceCrudPage({ resource }: { resource: keyof typeof resource
   const [saving, setSaving] = useState(false);
   const [generatedKey, setGeneratedKey] = useState('');
   const [tokenDialogOpen, setTokenDialogOpen] = useState(false);
+  const [confirmation, setConfirmation] = useState<ConfirmationState | null>(null);
+  const [confirming, setConfirming] = useState(false);
   const [companies, setCompanies] = useState<Array<{ label: string; value: number }>>([]);
   const [applications, setApplications] = useState<Array<{ label: string; value: number; company_id: number }>>([]);
 
@@ -115,28 +125,58 @@ export function ResourceCrudPage({ resource }: { resource: keyof typeof resource
     } finally { setSaving(false); }
   }
 
-  async function remove(item: any) {
-    if (!window.confirm(`Excluir ${item.name || item.id}?`)) return;
-    try { await resourceService.remove(config.endpoint, Number(item.id)); removeLocal(Number(item.id)); }
-    catch { /* O interceptor global da API exibe a mensagem. */ }
+  function requestRemove(item: any) {
+    setConfirmation({
+      title: 'Excluir registro',
+      message: `Tem certeza que deseja excluir ${item.name || item.id}? Esta ação não poderá ser desfeita.`,
+      confirmLabel: 'Excluir',
+      color: 'error',
+      action: async () => {
+        await resourceService.remove(config.endpoint, Number(item.id));
+        removeLocal(Number(item.id));
+      },
+    });
   }
 
-  async function regenerate(item: any) {
-    if (!window.confirm(`Regenerar o token de ${item.name}? O token atual deixará de funcionar imediatamente.`)) return;
-    try {
-      const response = await api.post(`/api/admin/api-keys/${item.id}/regenerate`);
-      upsertLocal(response.data?.data);
-      setGeneratedKey(response.data?.api_key ?? '');
-      setTokenDialogOpen(true);
-    } catch { /* O interceptor global da API exibe a mensagem. */ }
+  function requestRegenerate(item: any) {
+    setConfirmation({
+      title: 'Regenerar API Key',
+      message: `Tem certeza que deseja regenerar o token de ${item.name}? O token atual deixará de funcionar imediatamente.`,
+      confirmLabel: 'Regenerar',
+      color: 'warning',
+      action: async () => {
+        const response = await api.post(`/api/admin/api-keys/${item.id}/regenerate`);
+        upsertLocal(response.data?.data);
+        setGeneratedKey(response.data?.api_key ?? '');
+        setTokenDialogOpen(true);
+      },
+    });
   }
 
-  async function revoke(item: any) {
-    if (!window.confirm(`Revogar a API Key ${item.name}?`)) return;
+  function requestRevoke(item: any) {
+    setConfirmation({
+      title: 'Revogar API Key',
+      message: `Tem certeza que deseja revogar a API Key ${item.name}? Ela deixará de autenticar novas requisições.`,
+      confirmLabel: 'Revogar',
+      color: 'error',
+      action: async () => {
+        const response = await api.post(`/api/admin/api-keys/${item.id}/revoke`);
+        upsertLocal(response.data?.data);
+      },
+    });
+  }
+
+  async function executeConfirmation() {
+    if (!confirmation || confirming) return;
+    setConfirming(true);
     try {
-      const response = await api.post(`/api/admin/api-keys/${item.id}/revoke`);
-      upsertLocal(response.data?.data);
-    } catch { /* O interceptor global da API exibe a mensagem. */ }
+      await confirmation.action();
+      setConfirmation(null);
+    } catch {
+      // O interceptor global da API exibe a mensagem de erro.
+    } finally {
+      setConfirming(false);
+    }
   }
 
   async function copyGeneratedKey() {
@@ -163,7 +203,7 @@ export function ResourceCrudPage({ resource }: { resource: keyof typeof resource
         <Button variant="contained" startIcon={<RefreshRoundedIcon />} onClick={() => void load()} disabled={loading} sx={{ minWidth: 120 }}>Atualizar</Button>
       </Stack></Box>
       <Divider />
-      <ResourceListTable config={config} rows={paginated} loading={loading} onEdit={edit} onDelete={(item) => void remove(item)} onRegenerate={resource === 'apiKeys' ? (item) => void regenerate(item) : undefined} onRevoke={resource === 'apiKeys' ? (item) => void revoke(item) : undefined} />
+      <ResourceListTable config={config} rows={paginated} loading={loading} onEdit={edit} onDelete={requestRemove} onRegenerate={resource === 'apiKeys' ? requestRegenerate : undefined} onRevoke={resource === 'apiKeys' ? requestRevoke : undefined} />
       {!loading && <PaginationBar page={page} pageSize={pageSize} total={filtered.length} onPageChange={setPage} onPageSizeChange={(value) => { setPageSize(value); setPage(1); }} />}
     </Card>
   </Stack>
@@ -182,6 +222,19 @@ export function ResourceCrudPage({ resource }: { resource: keyof typeof resource
       </Stack></DialogContent>
       <DialogActions sx={{ p: 3 }}><Button onClick={close} disabled={saving}>Cancelar</Button><Button type="submit" variant="contained" disabled={saving}>{saving ? 'Salvando...' : 'Salvar'}</Button></DialogActions>
     </Stack>
+  </Dialog>
+
+  <Dialog open={Boolean(confirmation)} onClose={confirming ? undefined : () => setConfirmation(null)} fullWidth maxWidth="xs">
+    <DialogTitle>{confirmation?.title}</DialogTitle>
+    <DialogContent>
+      <Typography color="text.secondary" sx={{ pt: 1 }}>{confirmation?.message}</Typography>
+    </DialogContent>
+    <DialogActions sx={{ p: 3 }}>
+      <Button onClick={() => setConfirmation(null)} disabled={confirming}>Cancelar</Button>
+      <Button variant="contained" color={confirmation?.color ?? 'primary'} onClick={() => void executeConfirmation()} disabled={confirming}>
+        {confirming ? 'Processando...' : confirmation?.confirmLabel}
+      </Button>
+    </DialogActions>
   </Dialog>
 
   <Dialog open={tokenDialogOpen} onClose={closeTokenDialog} fullWidth maxWidth="sm">
