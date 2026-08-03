@@ -7,9 +7,7 @@ export const api = axios.create({
 
 api.interceptors.request.use((config) => {
   if (typeof window !== 'undefined') {
-    const sessionToken = localStorage.getItem('gtw_token');
-    const fallbackToken = process.env.NEXT_PUBLIC_API_TOKEN;
-    const token = sessionToken || fallbackToken;
+    const token = localStorage.getItem('gtw_token');
     if (token) config.headers.Authorization = `Bearer ${token}`;
   }
   return config;
