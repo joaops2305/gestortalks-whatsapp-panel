@@ -3,6 +3,7 @@ import type { InstanceStatusResponse, WhatsAppInstance } from './types';
 
 export type CreateInstancePayload = {
   empresa_id: number;
+  application_id: number;
   external_instance_id?: number | null;
   session: string;
   name?: string | null;
