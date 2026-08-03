@@ -12,6 +12,7 @@ import WebhookRoundedIcon from '@mui/icons-material/WebhookRounded';
 import MessageRoundedIcon from '@mui/icons-material/MessageRounded';
 import InsightsRoundedIcon from '@mui/icons-material/InsightsRounded';
 import MenuBookRoundedIcon from '@mui/icons-material/MenuBookRounded';
+import DownloadRoundedIcon from '@mui/icons-material/DownloadRounded';
 import LightModeRoundedIcon from '@mui/icons-material/LightModeRounded';
 import DarkModeRoundedIcon from '@mui/icons-material/DarkModeRounded';
 import LogoutRoundedIcon from '@mui/icons-material/LogoutRounded';
@@ -36,6 +37,7 @@ const allItems = [
   ['Logs', '/logs', DescriptionRoundedIcon, false],
   ['Configurações', '/configuracoes', SettingsRoundedIcon, false],
   ['Documentação', '/swagger', MenuBookRoundedIcon, false],
+  ['Downloads API', '/developer/downloads', DownloadRoundedIcon, false],
   ['Meu perfil', '/perfil', PersonRoundedIcon, false],
 ] as const;
 
@@ -58,12 +60,18 @@ export function AppShell({ children }: { children: React.ReactNode }) {
       </Toolbar>
       <Divider />
       <List sx={{ px: 1.5, py: 2 }}>
-        {items.map(([label, href, Icon]) => (
-          <ListItemButton key={href} component={Link} href={href} selected={pathname === href || (href === '/swagger' && pathname === '/documentacao')} onClick={() => setMobileOpen(false)} sx={{ borderRadius: 2, mb: 0.5 }}>
-            <ListItemIcon sx={{ minWidth: 40 }}><Icon fontSize="small" /></ListItemIcon>
-            <ListItemText primary={label} />
-          </ListItemButton>
-        ))}
+        {items.map(([label, href, Icon]) => {
+          const selected = pathname === href ||
+            (href === '/swagger' && pathname === '/documentacao') ||
+            (href === '/developer/downloads' && pathname.startsWith('/developer/downloads'));
+
+          return (
+            <ListItemButton key={href} component={Link} href={href} selected={selected} onClick={() => setMobileOpen(false)} sx={{ borderRadius: 2, mb: 0.5 }}>
+              <ListItemIcon sx={{ minWidth: 40 }}><Icon fontSize="small" /></ListItemIcon>
+              <ListItemText primary={label} />
+            </ListItemButton>
+          );
+        })}
       </List>
     </>
   );
