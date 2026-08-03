@@ -36,7 +36,7 @@ const allItems = [
   ['Métricas', '/metricas', InsightsRoundedIcon, false],
   ['Logs', '/logs', DescriptionRoundedIcon, false],
   ['Configurações', '/configuracoes', SettingsRoundedIcon, false],
-  ['Documentação', '/documentacao', MenuBookRoundedIcon, false],
+  ['Documentação', '/swagger', MenuBookRoundedIcon, false],
 ] as const;
 
 export function AppShell({ children }: { children: React.ReactNode }) {
@@ -59,7 +59,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
       <Divider />
       <List sx={{ px: 1.5, py: 2 }}>
         {items.map(([label, href, Icon]) => (
-          <ListItemButton key={href} component={Link} href={href} selected={pathname === href} onClick={() => setMobileOpen(false)} sx={{ borderRadius: 2, mb: 0.5 }}>
+          <ListItemButton key={href} component={Link} href={href} selected={pathname === href || (href === '/swagger' && pathname === '/documentacao')} onClick={() => setMobileOpen(false)} sx={{ borderRadius: 2, mb: 0.5 }}>
             <ListItemIcon sx={{ minWidth: 40 }}><Icon fontSize="small" /></ListItemIcon>
             <ListItemText primary={label} />
           </ListItemButton>
