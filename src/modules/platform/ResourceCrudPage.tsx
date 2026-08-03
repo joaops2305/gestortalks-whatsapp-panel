@@ -1,6 +1,7 @@
 'use client';
 
 import AddRoundedIcon from '@mui/icons-material/AddRounded';
+import ContentCopyRoundedIcon from '@mui/icons-material/ContentCopyRounded';
 import RefreshRoundedIcon from '@mui/icons-material/RefreshRounded';
 import SearchRoundedIcon from '@mui/icons-material/SearchRounded';
 import {
@@ -46,29 +47,14 @@ export function ResourceCrudPage({ resource }: { resource: keyof typeof resource
   const [applications, setApplications] = useState<Array<{ label: string; value: number; company_id: number }>>([]);
 
   useEffect(() => { if (!allowed) router.replace('/'); }, [allowed, router]);
-
   useEffect(() => {
     if (!allowed) return;
-
     const requests: Promise<any>[] = [api.get('/api/admin/applications')];
     if (isSuperAdmin) requests.push(api.get('/api/admin/companies'));
-
-    void Promise.all(requests)
-      .then(([applicationsResponse, companiesResponse]) => {
-        setApplications((applicationsResponse.data?.data ?? []).map((item: any) => ({
-          label: item.name,
-          value: Number(item.id),
-          company_id: Number(item.company_id),
-        })));
-
-        if (companiesResponse) {
-          setCompanies((companiesResponse.data?.data ?? []).map((item: any) => ({
-            label: item.name,
-            value: Number(item.id),
-          })));
-        }
-      })
-      .catch(() => undefined);
+    void Promise.all(requests).then(([applicationsResponse, companiesResponse]) => {
+      setApplications((applicationsResponse.data?.data ?? []).map((item: any) => ({ label: item.name, value: Number(item.id), company_id: Number(item.company_id) })));
+      if (companiesResponse) setCompanies((companiesResponse.data?.data ?? []).map((item: any) => ({ label: item.name, value: Number(item.id) })));
+    }).catch(() => undefined);
   }, [allowed, isSuperAdmin]);
 
   const visibleFields = useMemo(() => config.fields.filter((field) => isSuperAdmin || !['company_id', 'empresa_id'].includes(field.name)), [config.fields, isSuperAdmin]);
@@ -86,11 +72,7 @@ export function ResourceCrudPage({ resource }: { resource: keyof typeof resource
   }, [filtered.length, page, pageSize]);
 
   const close = () => { setOpen(false); setEditingId(null); setValues(initialValues(config.fields, companyId)); };
-  const optionsFor = (field: ResourceField) => field.lookup === 'companies'
-    ? companies
-    : field.lookup === 'applications'
-      ? applications.filter((item) => !values.company_id || item.company_id === Number(values.company_id))
-      : field.options ?? [];
+  const optionsFor = (field: ResourceField) => field.lookup === 'companies' ? companies : field.lookup === 'applications' ? applications.filter((item) => !values.company_id || item.company_id === Number(values.company_id)) : field.options ?? [];
 
   const edit = (item: any) => {
     const next = initialValues(config.fields, companyId);
@@ -126,6 +108,31 @@ export function ResourceCrudPage({ resource }: { resource: keyof typeof resource
     catch (requestError: any) { setError(requestError?.response?.data?.error || 'Não foi possível excluir o registro.'); }
   }
 
+  async function regenerate(item: any) {
+    if (!window.confirm(`Regenerar o token de ${item.name}? O token atual deixará de funcionar imediatamente.`)) return;
+    try {
+      const response = await api.post(`/api/admin/api-keys/${item.id}/regenerate`);
+      upsertLocal(response.data?.data);
+      setGeneratedKey(response.data?.api_key ?? '');
+      setMessage('API Key regenerada com sucesso.');
+    } catch (requestError: any) { setError(requestError?.response?.data?.error || 'Não foi possível regenerar a API Key.'); }
+  }
+
+  async function revoke(item: any) {
+    if (!window.confirm(`Revogar a API Key ${item.name}?`)) return;
+    try {
+      const response = await api.post(`/api/admin/api-keys/${item.id}/revoke`);
+      upsertLocal(response.data?.data);
+      setMessage('API Key revogada.');
+    } catch (requestError: any) { setError(requestError?.response?.data?.error || 'Não foi possível revogar a API Key.'); }
+  }
+
+  async function copyGeneratedKey() {
+    if (!generatedKey) return;
+    await navigator.clipboard.writeText(generatedKey);
+    setMessage('Token copiado para a área de transferência.');
+  }
+
   if (!allowed) return null;
 
   return <AuthGuard><AppShell><Stack spacing={3}>
@@ -134,17 +141,15 @@ export function ResourceCrudPage({ resource }: { resource: keyof typeof resource
       <Button variant="contained" startIcon={<AddRoundedIcon />} onClick={() => { setEditingId(null); setValues(initialValues(config.fields, companyId)); setOpen(true); }}>{config.actionLabel}</Button>
     </Stack>
     {error && <Alert severity="error" onClose={() => setError('')}>{error}</Alert>}
-    {generatedKey && <Alert severity="warning"><strong>Copie a API Key agora:</strong><Box component="code" sx={{ display: 'block', mt: 1, wordBreak: 'break-all' }}>{generatedKey}</Box></Alert>}
+    {generatedKey && <Alert severity="warning" onClose={() => setGeneratedKey('')} action={<Button color="inherit" size="small" startIcon={<ContentCopyRoundedIcon />} onClick={() => void copyGeneratedKey()}>Copiar</Button>}><strong>Copie o token agora. Ele não será exibido novamente.</strong><Box component="code" sx={{ display: 'block', mt: 1, wordBreak: 'break-all', fontWeight: 700 }}>{generatedKey}</Box></Alert>}
 
     <Card variant="outlined" sx={{ overflow: 'hidden' }}>
-      <Box sx={{ p: 2.5, bgcolor: 'background.paper' }}>
-        <Stack direction={{ xs: 'column', lg: 'row' }} spacing={1.5}>
-          <TextField fullWidth size="small" value={search} onChange={(event) => setSearch(event.target.value)} placeholder={`Buscar em ${config.title.toLowerCase()}...`} InputProps={{ startAdornment: <InputAdornment position="start"><SearchRoundedIcon fontSize="small" /></InputAdornment> }} />
-          <Button variant="contained" startIcon={<RefreshRoundedIcon />} onClick={() => void load()} disabled={loading} sx={{ minWidth: 120 }}>Atualizar</Button>
-        </Stack>
-      </Box>
+      <Box sx={{ p: 2.5, bgcolor: 'background.paper' }}><Stack direction={{ xs: 'column', lg: 'row' }} spacing={1.5}>
+        <TextField fullWidth size="small" value={search} onChange={(event) => setSearch(event.target.value)} placeholder={`Buscar em ${config.title.toLowerCase()}...`} InputProps={{ startAdornment: <InputAdornment position="start"><SearchRoundedIcon fontSize="small" /></InputAdornment> }} />
+        <Button variant="contained" startIcon={<RefreshRoundedIcon />} onClick={() => void load()} disabled={loading} sx={{ minWidth: 120 }}>Atualizar</Button>
+      </Stack></Box>
       <Divider />
-      <ResourceListTable config={config} rows={paginated} loading={loading} onEdit={edit} onDelete={(item) => void remove(item)} />
+      <ResourceListTable config={config} rows={paginated} loading={loading} onEdit={edit} onDelete={(item) => void remove(item)} onRegenerate={resource === 'apiKeys' ? (item) => void regenerate(item) : undefined} onRevoke={resource === 'apiKeys' ? (item) => void revoke(item) : undefined} />
       {!loading && <PaginationBar page={page} pageSize={pageSize} total={filtered.length} onPageChange={setPage} onPageSizeChange={(value) => { setPageSize(value); setPage(1); }} />}
     </Card>
   </Stack>
