@@ -4,6 +4,7 @@ import { CssBaseline, ThemeProvider, createTheme } from '@mui/material';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { useEffect, useMemo, useState } from 'react';
 import { ThemeModeContext, type ThemeMode } from '@/context/ThemeModeContext';
+import { NotificationProvider } from '@/components/NotificationProvider';
 
 export function AppProviders({ children }: { children: React.ReactNode }) {
   const [queryClient] = useState(() => new QueryClient());
@@ -44,7 +45,7 @@ export function AppProviders({ children }: { children: React.ReactNode }) {
       <ThemeModeContext.Provider value={{ mode, toggleMode }}>
         <ThemeProvider theme={theme}>
           <CssBaseline />
-          {children}
+          <NotificationProvider>{children}</NotificationProvider>
         </ThemeProvider>
       </ThemeModeContext.Provider>
     </QueryClientProvider>
