@@ -11,6 +11,7 @@ import SettingsRoundedIcon from '@mui/icons-material/SettingsRounded';
 import WebhookRoundedIcon from '@mui/icons-material/WebhookRounded';
 import MessageRoundedIcon from '@mui/icons-material/MessageRounded';
 import InsightsRoundedIcon from '@mui/icons-material/InsightsRounded';
+import MenuBookRoundedIcon from '@mui/icons-material/MenuBookRounded';
 import LightModeRoundedIcon from '@mui/icons-material/LightModeRounded';
 import DarkModeRoundedIcon from '@mui/icons-material/DarkModeRounded';
 import LogoutRoundedIcon from '@mui/icons-material/LogoutRounded';
@@ -35,6 +36,7 @@ const allItems = [
   ['Métricas', '/metricas', InsightsRoundedIcon, false],
   ['Logs', '/logs', DescriptionRoundedIcon, false],
   ['Configurações', '/configuracoes', SettingsRoundedIcon, false],
+  ['Documentação', '/documentacao', MenuBookRoundedIcon, false],
 ] as const;
 
 export function AppShell({ children }: { children: React.ReactNode }) {
