@@ -5,8 +5,8 @@ import ContentCopyRoundedIcon from '@mui/icons-material/ContentCopyRounded';
 import RefreshRoundedIcon from '@mui/icons-material/RefreshRounded';
 import SearchRoundedIcon from '@mui/icons-material/SearchRounded';
 import {
-  Alert, Box, Button, Card, Dialog, DialogActions, DialogContent, DialogTitle,
-  Divider, FormControl, InputAdornment, InputLabel, MenuItem, Select, Snackbar,
+  Box, Button, Card, Dialog, DialogActions, DialogContent, DialogTitle,
+  Divider, FormControl, InputAdornment, InputLabel, MenuItem, Select,
   Stack, Switch, TextField, Typography,
 } from '@mui/material';
 import { type FormEvent, useEffect, useMemo, useState } from 'react';
@@ -16,6 +16,7 @@ import { AuthGuard } from '@/components/AuthGuard';
 import { PaginationBar } from '@/components/ui/PaginationBar';
 import { api } from '@/services/api';
 import { getUser } from '@/services/auth';
+import { notifyError, notifySuccess } from '@/services/notifications';
 import { ResourceListTable } from './ResourceListTable';
 import { resourceConfigs, type ResourceField } from './resource.config';
 import { resourceService } from './resource.service';
@@ -41,12 +42,18 @@ export function ResourceCrudPage({ resource }: { resource: keyof typeof resource
   const [editingId, setEditingId] = useState<number | null>(null);
   const [values, setValues] = useState<Record<string, any>>(() => initialValues(config.fields, companyId));
   const [saving, setSaving] = useState(false);
-  const [message, setMessage] = useState('');
   const [generatedKey, setGeneratedKey] = useState('');
+  const [tokenDialogOpen, setTokenDialogOpen] = useState(false);
   const [companies, setCompanies] = useState<Array<{ label: string; value: number }>>([]);
   const [applications, setApplications] = useState<Array<{ label: string; value: number; company_id: number }>>([]);
 
   useEffect(() => { if (!allowed) router.replace('/'); }, [allowed, router]);
+  useEffect(() => {
+    if (!error) return;
+    notifyError(error);
+    setError('');
+  }, [error, setError]);
+
   useEffect(() => {
     if (!allowed) return;
     const requests: Promise<any>[] = [api.get('/api/admin/applications')];
@@ -72,6 +79,7 @@ export function ResourceCrudPage({ resource }: { resource: keyof typeof resource
   }, [filtered.length, page, pageSize]);
 
   const close = () => { setOpen(false); setEditingId(null); setValues(initialValues(config.fields, companyId)); };
+  const closeTokenDialog = () => { setTokenDialogOpen(false); setGeneratedKey(''); };
   const optionsFor = (field: ResourceField) => field.lookup === 'companies' ? companies : field.lookup === 'applications' ? applications.filter((item) => !values.company_id || item.company_id === Number(values.company_id)) : field.options ?? [];
 
   const edit = (item: any) => {
@@ -85,27 +93,32 @@ export function ResourceCrudPage({ resource }: { resource: keyof typeof resource
   };
 
   async function submit(event: FormEvent) {
-    event.preventDefault(); setSaving(true); setError(''); setGeneratedKey('');
+    event.preventDefault(); setSaving(true); setGeneratedKey('');
     try {
       const normalized = { ...values };
       if (!isSuperAdmin && companyId) { normalized.company_id = companyId; normalized.empresa_id = companyId; }
       const payload = config.toPayload(normalized);
       if (editingId) {
         const updated = await resourceService.update<any>(config.endpoint, editingId, payload);
-        upsertLocal(updated); setMessage('Registro atualizado com sucesso.');
+        upsertLocal(updated);
       } else {
         const created = await resourceService.create<any>(config.endpoint, payload);
-        upsertLocal(created.data); if (created.apiKey) setGeneratedKey(created.apiKey); setMessage('Registro cadastrado com sucesso.');
+        upsertLocal(created.data);
+        if (created.apiKey) {
+          setGeneratedKey(created.apiKey);
+          setTokenDialogOpen(true);
+        }
       }
       close();
-    } catch (requestError: any) { setError(requestError?.response?.data?.error || 'Não foi possível salvar o registro.'); }
-    finally { setSaving(false); }
+    } catch {
+      // O interceptor global da API exibe a mensagem de erro.
+    } finally { setSaving(false); }
   }
 
   async function remove(item: any) {
     if (!window.confirm(`Excluir ${item.name || item.id}?`)) return;
-    try { await resourceService.remove(config.endpoint, Number(item.id)); removeLocal(Number(item.id)); setMessage('Registro excluído.'); }
-    catch (requestError: any) { setError(requestError?.response?.data?.error || 'Não foi possível excluir o registro.'); }
+    try { await resourceService.remove(config.endpoint, Number(item.id)); removeLocal(Number(item.id)); }
+    catch { /* O interceptor global da API exibe a mensagem. */ }
   }
 
   async function regenerate(item: any) {
@@ -114,8 +127,8 @@ export function ResourceCrudPage({ resource }: { resource: keyof typeof resource
       const response = await api.post(`/api/admin/api-keys/${item.id}/regenerate`);
       upsertLocal(response.data?.data);
       setGeneratedKey(response.data?.api_key ?? '');
-      setMessage('API Key regenerada com sucesso.');
-    } catch (requestError: any) { setError(requestError?.response?.data?.error || 'Não foi possível regenerar a API Key.'); }
+      setTokenDialogOpen(true);
+    } catch { /* O interceptor global da API exibe a mensagem. */ }
   }
 
   async function revoke(item: any) {
@@ -123,14 +136,17 @@ export function ResourceCrudPage({ resource }: { resource: keyof typeof resource
     try {
       const response = await api.post(`/api/admin/api-keys/${item.id}/revoke`);
       upsertLocal(response.data?.data);
-      setMessage('API Key revogada.');
-    } catch (requestError: any) { setError(requestError?.response?.data?.error || 'Não foi possível revogar a API Key.'); }
+    } catch { /* O interceptor global da API exibe a mensagem. */ }
   }
 
   async function copyGeneratedKey() {
     if (!generatedKey) return;
-    await navigator.clipboard.writeText(generatedKey);
-    setMessage('Token copiado para a área de transferência.');
+    try {
+      await navigator.clipboard.writeText(generatedKey);
+      notifySuccess('Token copiado para a área de transferência.');
+    } catch {
+      notifyError('Não foi possível copiar o token.');
+    }
   }
 
   if (!allowed) return null;
@@ -140,8 +156,6 @@ export function ResourceCrudPage({ resource }: { resource: keyof typeof resource
       <Box><Typography variant="h4" fontWeight={800}>{config.title}</Typography><Typography color="text.secondary">{config.description}</Typography></Box>
       <Button variant="contained" startIcon={<AddRoundedIcon />} onClick={() => { setEditingId(null); setValues(initialValues(config.fields, companyId)); setOpen(true); }}>{config.actionLabel}</Button>
     </Stack>
-    {error && <Alert severity="error" onClose={() => setError('')}>{error}</Alert>}
-    {generatedKey && <Alert severity="warning" onClose={() => setGeneratedKey('')} action={<Button color="inherit" size="small" startIcon={<ContentCopyRoundedIcon />} onClick={() => void copyGeneratedKey()}>Copiar</Button>}><strong>Copie o token agora. Ele não será exibido novamente.</strong><Box component="code" sx={{ display: 'block', mt: 1, wordBreak: 'break-all', fontWeight: 700 }}>{generatedKey}</Box></Alert>}
 
     <Card variant="outlined" sx={{ overflow: 'hidden' }}>
       <Box sx={{ p: 2.5, bgcolor: 'background.paper' }}><Stack direction={{ xs: 'column', lg: 'row' }} spacing={1.5}>
@@ -169,6 +183,23 @@ export function ResourceCrudPage({ resource }: { resource: keyof typeof resource
       <DialogActions sx={{ p: 3 }}><Button onClick={close} disabled={saving}>Cancelar</Button><Button type="submit" variant="contained" disabled={saving}>{saving ? 'Salvando...' : 'Salvar'}</Button></DialogActions>
     </Stack>
   </Dialog>
-  <Snackbar open={Boolean(message)} autoHideDuration={3500} onClose={() => setMessage('')} message={message} />
+
+  <Dialog open={tokenDialogOpen} onClose={closeTokenDialog} fullWidth maxWidth="sm">
+    <DialogTitle>API Key gerada</DialogTitle>
+    <DialogContent>
+      <Stack spacing={2} pt={1}>
+        <Typography color="text.secondary">
+          Copie o token agora. Por segurança, ele não será exibido novamente depois que esta janela for fechada.
+        </Typography>
+        <Box component="code" sx={{ display: 'block', p: 2, borderRadius: 2, bgcolor: 'action.hover', border: '1px solid', borderColor: 'divider', wordBreak: 'break-all', fontWeight: 700 }}>
+          {generatedKey}
+        </Box>
+      </Stack>
+    </DialogContent>
+    <DialogActions sx={{ p: 3 }}>
+      <Button onClick={closeTokenDialog}>Fechar</Button>
+      <Button variant="contained" startIcon={<ContentCopyRoundedIcon />} onClick={() => void copyGeneratedKey()}>Copiar token</Button>
+    </DialogActions>
+  </Dialog>
   </AppShell></AuthGuard>;
 }
