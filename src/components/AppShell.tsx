@@ -5,7 +5,6 @@ import BusinessRoundedIcon from '@mui/icons-material/BusinessRounded';
 import PeopleRoundedIcon from '@mui/icons-material/PeopleRounded';
 import PersonRoundedIcon from '@mui/icons-material/PersonRounded';
 import PhoneAndroidRoundedIcon from '@mui/icons-material/PhoneAndroidRounded';
-import KeyRoundedIcon from '@mui/icons-material/KeyRounded';
 import HubRoundedIcon from '@mui/icons-material/HubRounded';
 import DescriptionRoundedIcon from '@mui/icons-material/DescriptionRounded';
 import SettingsRoundedIcon from '@mui/icons-material/SettingsRounded';
@@ -32,7 +31,6 @@ const allItems = [
   ['Instâncias', '/instancias', PhoneAndroidRoundedIcon, false],
   ['Mensagens', '/mensagens', MessageRoundedIcon, false],
   ['Aplicações', '/aplicacoes', HubRoundedIcon, false],
-  ['API Keys', '/api-keys', KeyRoundedIcon, false],
   ['Webhooks', '/webhooks', WebhookRoundedIcon, false],
   ['Métricas', '/metricas', InsightsRoundedIcon, false],
   ['Logs', '/logs', DescriptionRoundedIcon, false],
