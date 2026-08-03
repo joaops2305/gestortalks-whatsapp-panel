@@ -1,0 +1,172 @@
+'use client';
+
+import DescriptionRoundedIcon from '@mui/icons-material/DescriptionRounded';
+import OpenInNewRoundedIcon from '@mui/icons-material/OpenInNewRounded';
+import RefreshRoundedIcon from '@mui/icons-material/RefreshRounded';
+import VpnKeyRoundedIcon from '@mui/icons-material/VpnKeyRounded';
+import { Box, Button, Card, Stack, TextField, Typography } from '@mui/material';
+import Link from 'next/link';
+import { useEffect, useMemo, useState } from 'react';
+import { AppShell } from '@/components/AppShell';
+import { AuthGuard } from '@/components/AuthGuard';
+import { getToken } from '@/services/auth';
+
+export default function SwaggerPage() {
+  const [reloadKey, setReloadKey] = useState(1);
+  const [authorizationToken, setAuthorizationToken] = useState('');
+  const apiUrl = (process.env.NEXT_PUBLIC_API_URL ?? 'http://127.0.0.1:3002').replace(/\/$/, '');
+  const openApiUrl = `${apiUrl}/openapi.json`;
+  const externalSwaggerUrl = `${apiUrl}/docs`;
+
+  useEffect(() => {
+    setAuthorizationToken(getToken() ?? '');
+  }, []);
+
+  const swaggerHtml = useMemo(() => `<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>GestorTalks Whats API</title>
+  <link rel="stylesheet" href="https://unpkg.com/swagger-ui-dist@5/swagger-ui.css" />
+  <style>
+    html, body, #swagger-ui { margin: 0; min-height: 100%; background: #ffffff; }
+    body { font-family: Inter, Arial, sans-serif; }
+    .swagger-ui .topbar { display: none; }
+    .swagger-ui .information-container { margin: 24px 0 12px; }
+    .swagger-ui .scheme-container { box-shadow: none; border-top: 1px solid #e5e7eb; border-bottom: 1px solid #e5e7eb; }
+    #loading { padding: 32px; font-family: Arial, sans-serif; color: #475569; }
+    #error { display: none; margin: 24px; padding: 16px; border: 1px solid #ef4444; border-radius: 8px; color: #991b1b; background: #fef2f2; white-space: pre-wrap; }
+  </style>
+</head>
+<body>
+  <div id="loading">Carregando a versão mais recente da documentação...</div>
+  <div id="error"></div>
+  <div id="swagger-ui"></div>
+  <script src="https://unpkg.com/swagger-ui-dist@5/swagger-ui-bundle.js"></script>
+  <script>
+    (async function loadSwagger() {
+      const loading = document.getElementById('loading');
+      const errorBox = document.getElementById('error');
+      const token = ${JSON.stringify(authorizationToken)};
+
+      try {
+        const specificationUrl = ${JSON.stringify(openApiUrl)} + '?_=' + Date.now();
+        const response = await fetch(specificationUrl, {
+          method: 'GET',
+          cache: 'no-store',
+          headers: {
+            Accept: 'application/json',
+            'Cache-Control': 'no-cache, no-store, must-revalidate',
+            Pragma: 'no-cache'
+          }
+        });
+
+        if (!response.ok) {
+          throw new Error('Falha ao carregar OpenAPI: HTTP ' + response.status);
+        }
+
+        const specification = await response.json();
+        loading.remove();
+
+        window.ui = SwaggerUIBundle({
+          spec: specification,
+          dom_id: '#swagger-ui',
+          deepLinking: true,
+          persistAuthorization: true,
+          displayRequestDuration: true,
+          filter: true,
+          tryItOutEnabled: true,
+          docExpansion: 'list',
+          defaultModelsExpandDepth: 1,
+          requestInterceptor: function(request) {
+            if (token) {
+              request.headers = request.headers || {};
+              request.headers.Authorization = 'Bearer ' + token;
+            }
+            return request;
+          },
+          onComplete: function() {
+            if (token && window.ui && typeof window.ui.preauthorizeApiKey === 'function') {
+              window.ui.preauthorizeApiKey('bearerAuth', token);
+            }
+          }
+        });
+      } catch (error) {
+        loading.style.display = 'none';
+        errorBox.style.display = 'block';
+        errorBox.textContent = error instanceof Error ? error.message : String(error);
+      }
+    })();
+  </script>
+</body>
+</html>`, [authorizationToken, openApiUrl, reloadKey]);
+
+  function applyAuthorization() {
+    setReloadKey((value) => value + 1);
+  }
+
+  return (
+    <AuthGuard>
+      <AppShell>
+        <Stack spacing={3}>
+          <Stack direction={{ xs: 'column', md: 'row' }} justifyContent="space-between" alignItems={{ md: 'center' }} spacing={2}>
+            <Box>
+              <Typography variant="h4" fontWeight={800}>Documentação da API</Typography>
+              <Typography color="text.secondary">Swagger integrado ao painel para consultar e testar os endpoints do GestorTalks Whats.</Typography>
+            </Box>
+            <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1}>
+              <Button variant="outlined" startIcon={<RefreshRoundedIcon />} onClick={() => setReloadKey((value) => value + 1)}>
+                Atualizar documentação
+              </Button>
+              <Button component={Link} href="/documentacao" variant="outlined" startIcon={<DescriptionRoundedIcon />}>
+                Guia de integração
+              </Button>
+              <Button component="a" href={`${externalSwaggerUrl}?_=${reloadKey}`} target="_blank" rel="noreferrer" variant="outlined" startIcon={<OpenInNewRoundedIcon />}>
+                Abrir em nova aba
+              </Button>
+            </Stack>
+          </Stack>
+
+          <Card variant="outlined" sx={{ p: 2 }}>
+            <Stack direction={{ xs: 'column', md: 'row' }} spacing={2} alignItems={{ md: 'center' }}>
+              <TextField
+                fullWidth
+                type="password"
+                label="Token para testar a API"
+                value={authorizationToken}
+                onChange={(event) => setAuthorizationToken(event.target.value.trim())}
+                helperText="Carregado com o token da sessão. Você pode substituir pela API Key global gtwa_user_* do perfil."
+              />
+              <Button
+                variant="contained"
+                startIcon={<VpnKeyRoundedIcon />}
+                onClick={applyAuthorization}
+                disabled={!authorizationToken}
+                sx={{ minWidth: 190, height: 56 }}
+              >
+                Aplicar token
+              </Button>
+            </Stack>
+          </Card>
+
+          <Card variant="outlined" sx={{ overflow: 'hidden', minHeight: 'calc(100vh - 290px)' }}>
+            <Box
+              key={`${reloadKey}-${authorizationToken ? 'authorized' : 'anonymous'}`}
+              component="iframe"
+              title="Swagger GestorTalks Whats"
+              srcDoc={swaggerHtml}
+              sx={{
+                display: 'block',
+                width: '100%',
+                minHeight: 'calc(100vh - 290px)',
+                border: 0,
+                bgcolor: '#fff',
+              }}
+            />
+          </Card>
+        </Stack>
+      </AppShell>
+    </AuthGuard>
+  );
+}
