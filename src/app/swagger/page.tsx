@@ -2,13 +2,15 @@
 
 import DescriptionRoundedIcon from '@mui/icons-material/DescriptionRounded';
 import OpenInNewRoundedIcon from '@mui/icons-material/OpenInNewRounded';
+import RefreshRoundedIcon from '@mui/icons-material/RefreshRounded';
 import { Box, Button, Card, Stack, Typography } from '@mui/material';
 import Link from 'next/link';
-import { useMemo } from 'react';
+import { useMemo, useState } from 'react';
 import { AppShell } from '@/components/AppShell';
 import { AuthGuard } from '@/components/AuthGuard';
 
 export default function SwaggerPage() {
+  const [reloadKey, setReloadKey] = useState(1);
   const apiUrl = (process.env.NEXT_PUBLIC_API_URL ?? 'http://127.0.0.1:3002').replace(/\/$/, '');
   const openApiUrl = `${apiUrl}/openapi.json`;
   const externalSwaggerUrl = `${apiUrl}/docs`;
@@ -26,29 +28,59 @@ export default function SwaggerPage() {
     .swagger-ui .topbar { display: none; }
     .swagger-ui .information-container { margin: 24px 0 12px; }
     .swagger-ui .scheme-container { box-shadow: none; border-top: 1px solid #e5e7eb; border-bottom: 1px solid #e5e7eb; }
+    #loading { padding: 32px; font-family: Arial, sans-serif; color: #475569; }
+    #error { display: none; margin: 24px; padding: 16px; border: 1px solid #ef4444; border-radius: 8px; color: #991b1b; background: #fef2f2; white-space: pre-wrap; }
   </style>
 </head>
 <body>
+  <div id="loading">Carregando a versão mais recente da documentação...</div>
+  <div id="error"></div>
   <div id="swagger-ui"></div>
   <script src="https://unpkg.com/swagger-ui-dist@5/swagger-ui-bundle.js"></script>
   <script>
-    window.ui = SwaggerUIBundle({
-      url: ${JSON.stringify(openApiUrl)},
-      dom_id: '#swagger-ui',
-      deepLinking: true,
-      persistAuthorization: true,
-      displayRequestDuration: true,
-      filter: true,
-      tryItOutEnabled: true,
-      docExpansion: 'list',
-      defaultModelsExpandDepth: 1,
-      requestInterceptor: function(request) {
-        return request;
+    (async function loadSwagger() {
+      const loading = document.getElementById('loading');
+      const errorBox = document.getElementById('error');
+
+      try {
+        const specificationUrl = ${JSON.stringify(openApiUrl)} + '?_=' + Date.now();
+        const response = await fetch(specificationUrl, {
+          method: 'GET',
+          cache: 'no-store',
+          headers: {
+            Accept: 'application/json',
+            'Cache-Control': 'no-cache, no-store, must-revalidate',
+            Pragma: 'no-cache'
+          }
+        });
+
+        if (!response.ok) {
+          throw new Error('Falha ao carregar OpenAPI: HTTP ' + response.status);
+        }
+
+        const specification = await response.json();
+        loading.remove();
+
+        window.ui = SwaggerUIBundle({
+          spec: specification,
+          dom_id: '#swagger-ui',
+          deepLinking: true,
+          persistAuthorization: true,
+          displayRequestDuration: true,
+          filter: true,
+          tryItOutEnabled: true,
+          docExpansion: 'list',
+          defaultModelsExpandDepth: 1
+        });
+      } catch (error) {
+        loading.style.display = 'none';
+        errorBox.style.display = 'block';
+        errorBox.textContent = error instanceof Error ? error.message : String(error);
       }
-    });
+    })();
   </script>
 </body>
-</html>`, [openApiUrl]);
+</html>`, [openApiUrl, reloadKey]);
 
   return (
     <AuthGuard>
@@ -60,10 +92,13 @@ export default function SwaggerPage() {
               <Typography color="text.secondary">Swagger integrado ao painel para consultar e testar os endpoints do GestorTalks Whats.</Typography>
             </Box>
             <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1}>
+              <Button variant="outlined" startIcon={<RefreshRoundedIcon />} onClick={() => setReloadKey((value) => value + 1)}>
+                Atualizar documentação
+              </Button>
               <Button component={Link} href="/documentacao" variant="outlined" startIcon={<DescriptionRoundedIcon />}>
                 Guia de integração
               </Button>
-              <Button component="a" href={externalSwaggerUrl} target="_blank" rel="noreferrer" variant="outlined" startIcon={<OpenInNewRoundedIcon />}>
+              <Button component="a" href={`${externalSwaggerUrl}?_=${reloadKey}`} target="_blank" rel="noreferrer" variant="outlined" startIcon={<OpenInNewRoundedIcon />}>
                 Abrir em nova aba
               </Button>
             </Stack>
@@ -71,6 +106,7 @@ export default function SwaggerPage() {
 
           <Card variant="outlined" sx={{ overflow: 'hidden', minHeight: 'calc(100vh - 190px)' }}>
             <Box
+              key={reloadKey}
               component="iframe"
               title="Swagger GestorTalks Whats"
               srcDoc={swaggerHtml}
