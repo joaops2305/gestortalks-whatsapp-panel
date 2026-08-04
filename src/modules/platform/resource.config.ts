@@ -47,19 +47,13 @@ export const resourceConfigs: Record<string, ResourceConfig> = {
     toPayload: (v) => ({ ...v, name: String(v.name || '').trim(), email: String(v.email || '').trim().toLowerCase(), company_id: v.company_id ? Number(v.company_id) : null, password: v.password ? String(v.password) : undefined }),
   },
   applications: {
-    title: 'Aplicações', description: 'Cadastre aplicações externas que consomem a API.', actionLabel: 'Nova aplicação', endpoint: '/api/admin/applications',
+    title: 'Aplicações', description: 'Cadastre aplicações externas, vincule instâncias e configure os seus webhooks.', actionLabel: 'Nova aplicação', endpoint: '/api/admin/applications',
     fields: [{ name: 'name', label: 'Nome da aplicação', required: true }, company(), { name: 'description', label: 'Descrição' }, { name: 'rate_limit', label: 'Limite por minuto', type: 'number' }, { name: 'status', label: 'Ativa', type: 'boolean' }],
     columns: [{ key: 'name', label: 'Nome' }, { key: 'company_name', label: 'Empresa' }, { key: 'description', label: 'Descrição' }, { key: 'rate_limit', label: 'Rate limit' }, { key: 'status', label: 'Status' }],
     toPayload: (v) => ({ ...v, company_id: Number(v.company_id), rate_limit: Number(v.rate_limit || 300) }),
   },
-  apiKeys: {
-    title: 'API Keys', description: 'Crie, regenere e revogue chaves de integração.', actionLabel: 'Nova API Key', endpoint: '/api/admin/api-keys',
-    fields: [{ name: 'name', label: 'Nome da chave', required: true }, company(), application(), { name: 'environment', label: 'Ambiente', type: 'select', required: true, options: [{ label: 'Teste', value: 'test' }, { label: 'Produção', value: 'live' }] }, { name: 'expires_in_days', label: 'Validade em dias', type: 'number' }, { name: 'status', label: 'Ativa', type: 'boolean' }],
-    columns: [{ key: 'name', label: 'Nome' }, { key: 'application_name', label: 'Aplicação' }, { key: 'key_prefix', label: 'Prefixo do token' }, { key: 'environment', label: 'Ambiente' }, { key: 'last_used_at', label: 'Último uso' }, { key: 'status', label: 'Status' }],
-    toPayload: (v) => ({ ...v, company_id: Number(v.company_id), application_id: v.application_id ? Number(v.application_id) : null, expires_in_days: v.expires_in_days ? Number(v.expires_in_days) : null }),
-  },
   webhooks: {
-    title: 'Webhooks', description: 'Gerencie destinos, eventos e segredos de assinatura.', actionLabel: 'Novo webhook', endpoint: '/api/admin/webhooks',
+    title: 'Webhooks', description: 'Gerencie destinos, eventos e segredos de assinatura por aplicação.', actionLabel: 'Novo webhook', endpoint: '/api/admin/webhooks',
     fields: [{ name: 'name', label: 'Nome do webhook', required: true }, company(), application(), { name: 'url', label: 'URL de destino', type: 'url', required: true }, { name: 'events', label: 'Eventos separados por vírgula' }, { name: 'secret', label: 'Segredo de assinatura', type: 'password' }, { name: 'status', label: 'Ativo', type: 'boolean' }],
     columns: [{ key: 'name', label: 'Nome' }, { key: 'company_name', label: 'Empresa' }, { key: 'url', label: 'URL' }, { key: 'events', label: 'Eventos' }, { key: 'status', label: 'Status' }],
     toPayload: (v) => ({ ...v, company_id: Number(v.company_id), application_id: v.application_id ? Number(v.application_id) : null, events: String(v.events || 'onmessage,onconnection').split(',').map((item) => item.trim()).filter(Boolean), secret: v.secret || null }),
