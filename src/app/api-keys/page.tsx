@@ -1,5 +1,5 @@
-import { ResourceCrudPage } from '@/modules/platform/ResourceCrudPage';
+import { redirect } from 'next/navigation';
 
 export default function ApiKeysPage() {
-  return <ResourceCrudPage resource="apiKeys" />;
+  redirect('/perfil');
 }
