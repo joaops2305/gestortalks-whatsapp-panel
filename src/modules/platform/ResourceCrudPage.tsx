@@ -17,6 +17,7 @@ import { PaginationBar } from '@/components/ui/PaginationBar';
 import { api } from '@/services/api';
 import { getUser } from '@/services/auth';
 import { notifyError, notifySuccess } from '@/services/notifications';
+import { ApplicationInstancesManager } from './ApplicationInstancesManager';
 import { ResourceListTable } from './ResourceListTable';
 import { resourceConfigs, type ResourceField } from './resource.config';
 import { resourceService } from './resource.service';
@@ -206,6 +207,8 @@ export function ResourceCrudPage({ resource }: { resource: keyof typeof resource
       <ResourceListTable config={config} rows={paginated} loading={loading} onEdit={edit} onDelete={requestRemove} onRegenerate={resource === 'apiKeys' ? requestRegenerate : undefined} onRevoke={resource === 'apiKeys' ? requestRevoke : undefined} />
       {!loading && <PaginationBar page={page} pageSize={pageSize} total={filtered.length} onPageChange={setPage} onPageSizeChange={(value) => { setPageSize(value); setPage(1); }} />}
     </Card>
+
+    {resource === 'applications' && <ApplicationInstancesManager />}
   </Stack>
 
   <Dialog open={open} onClose={saving ? undefined : close} fullWidth maxWidth="sm">
