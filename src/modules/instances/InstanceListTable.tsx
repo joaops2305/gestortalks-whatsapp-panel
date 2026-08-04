@@ -29,11 +29,11 @@ export function InstanceListTable({ rows, loading, busyId, onQr, onDisconnect, o
   if (loading) return <Stack alignItems="center" justifyContent="center" minHeight={260}><CircularProgress /></Stack>;
   if (!rows.length) return <Alert severity="info" sx={{ m: 2 }}>Nenhuma instância encontrada.</Alert>;
 
-  const columns: Array<[string, number]> = [['Instância', 230], ['Empresa', 170], ['Aplicações', 250], ['Número', 150], ['Status', 120]];
+  const columns: Array<[string, number]> = [['ID', 80], ['Instância', 230], ['Empresa', 170], ['Aplicações', 250], ['Número', 150], ['Status', 120]];
 
   return (
     <TableContainer sx={{ overflowX: 'auto' }}>
-      <Table stickyHeader size="small" sx={{ minWidth: 1120, tableLayout: 'fixed' }}>
+      <Table stickyHeader size="small" sx={{ minWidth: 1200, tableLayout: 'fixed' }}>
         <TableHead>
           <TableRow>
             {columns.map(([label, width]) => <TableCell key={label} sx={{ width, py: 1.25, bgcolor: 'action.selected', borderBottom: '1px solid', borderColor: 'divider', fontSize: 11, fontWeight: 800, letterSpacing: .35, color: 'text.secondary', textTransform: 'uppercase' }}>{label}</TableCell>)}
@@ -50,6 +50,9 @@ export function InstanceListTable({ rows, loading, busyId, onQr, onDisconnect, o
 
             return (
               <TableRow hover key={instance.id} sx={{ '&:last-child td': { borderBottom: 0 }, '& td': { py: 1.2 } }}>
+                <TableCell>
+                  <Chip size="small" label={`#${instance.id}`} color="primary" variant="outlined" sx={{ fontWeight: 800 }} />
+                </TableCell>
                 <TableCell>
                   <Stack direction="row" spacing={1.25} alignItems="center" minWidth={0}>
                     <Avatar sx={{ width: 32, height: 32, bgcolor: 'primary.main', fontSize: 12, fontWeight: 800 }}>{(instance.name || instance.session || '?').slice(0, 2).toUpperCase()}</Avatar>
