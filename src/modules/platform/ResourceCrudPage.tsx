@@ -5,8 +5,8 @@ import ContentCopyRoundedIcon from '@mui/icons-material/ContentCopyRounded';
 import RefreshRoundedIcon from '@mui/icons-material/RefreshRounded';
 import SearchRoundedIcon from '@mui/icons-material/SearchRounded';
 import {
-  Box, Button, Card, Dialog, DialogActions, DialogContent, DialogTitle,
-  Divider, FormControl, InputAdornment, InputLabel, MenuItem, Select,
+  Alert, Box, Button, Card, Checkbox, Dialog, DialogActions, DialogContent, DialogTitle,
+  Divider, FormControl, InputAdornment, InputLabel, ListItemText, MenuItem, Select,
   Stack, Switch, TextField, Typography,
 } from '@mui/material';
 import { type FormEvent, useEffect, useMemo, useState } from 'react';
@@ -17,7 +17,6 @@ import { PaginationBar } from '@/components/ui/PaginationBar';
 import { api } from '@/services/api';
 import { getUser } from '@/services/auth';
 import { notifyError, notifySuccess } from '@/services/notifications';
-import { ApplicationInstancesManager } from './ApplicationInstancesManager';
 import { ResourceListTable } from './ResourceListTable';
 import { resourceConfigs, type ResourceField } from './resource.config';
 import { resourceService } from './resource.service';
@@ -34,6 +33,15 @@ type ConfirmationState = {
   confirmLabel: string;
   color: 'primary' | 'warning' | 'error';
   action: () => Promise<void>;
+};
+
+type InstanceOption = {
+  id: number;
+  empresa_id: number;
+  name?: string | null;
+  session: string;
+  status?: string | null;
+  phone_number?: string | null;
 };
 
 export function ResourceCrudPage({ resource }: { resource: keyof typeof resourceConfigs }) {
@@ -57,6 +65,9 @@ export function ResourceCrudPage({ resource }: { resource: keyof typeof resource
   const [confirming, setConfirming] = useState(false);
   const [companies, setCompanies] = useState<Array<{ label: string; value: number }>>([]);
   const [applications, setApplications] = useState<Array<{ label: string; value: number; company_id: number }>>([]);
+  const [instanceOptions, setInstanceOptions] = useState<InstanceOption[]>([]);
+  const [selectedInstanceIds, setSelectedInstanceIds] = useState<number[]>([]);
+  const [loadingApplicationInstances, setLoadingApplicationInstances] = useState(false);
 
   useEffect(() => { if (!allowed) router.replace('/'); }, [allowed, router]);
   useEffect(() => {
@@ -67,10 +78,18 @@ export function ResourceCrudPage({ resource }: { resource: keyof typeof resource
 
   useEffect(() => {
     if (!allowed) return;
-    const requests: Promise<any>[] = [api.get('/api/admin/applications')];
+    const requests: Promise<any>[] = [api.get('/api/admin/applications'), api.get('/api/instances')];
     if (isSuperAdmin) requests.push(api.get('/api/admin/companies'));
-    void Promise.all(requests).then(([applicationsResponse, companiesResponse]) => {
+    void Promise.all(requests).then(([applicationsResponse, instancesResponse, companiesResponse]) => {
       setApplications((applicationsResponse.data?.data ?? []).map((item: any) => ({ label: item.name, value: Number(item.id), company_id: Number(item.company_id) })));
+      setInstanceOptions((instancesResponse.data?.data ?? []).map((item: any) => ({
+        id: Number(item.id),
+        empresa_id: Number(item.empresa_id),
+        name: item.name,
+        session: item.session,
+        status: item.status,
+        phone_number: item.phone_number,
+      })));
       if (companiesResponse) setCompanies((companiesResponse.data?.data ?? []).map((item: any) => ({ label: item.name, value: Number(item.id) })));
     }).catch(() => undefined);
   }, [allowed, isSuperAdmin]);
@@ -82,25 +101,64 @@ export function ResourceCrudPage({ resource }: { resource: keyof typeof resource
     return items.filter((item) => Object.values(item).some((value) => String(Array.isArray(value) ? value.join(', ') : value ?? '').toLowerCase().includes(term)));
   }, [items, search]);
   const paginated = useMemo(() => filtered.slice((page - 1) * pageSize, page * pageSize), [filtered, page, pageSize]);
+  const formCompanyId = Number(isSuperAdmin ? values.company_id : companyId || 0);
+  const availableInstances = useMemo(
+    () => instanceOptions.filter((instance) => Number(instance.empresa_id) === formCompanyId),
+    [instanceOptions, formCompanyId],
+  );
 
   useEffect(() => { setPage(1); }, [search, pageSize]);
   useEffect(() => {
     const maxPage = Math.max(1, Math.ceil(filtered.length / pageSize));
     if (page > maxPage) setPage(maxPage);
   }, [filtered.length, page, pageSize]);
+  useEffect(() => {
+    if (resource !== 'applications') return;
+    setSelectedInstanceIds((current) => current.filter((id) => availableInstances.some((instance) => instance.id === id)));
+  }, [availableInstances, resource]);
 
-  const close = () => { setOpen(false); setEditingId(null); setValues(initialValues(config.fields, companyId)); };
+  const close = () => {
+    setOpen(false);
+    setEditingId(null);
+    setValues(initialValues(config.fields, companyId));
+    setSelectedInstanceIds([]);
+    setLoadingApplicationInstances(false);
+  };
   const closeTokenDialog = () => { setTokenDialogOpen(false); setGeneratedKey(''); };
   const optionsFor = (field: ResourceField) => field.lookup === 'companies' ? companies : field.lookup === 'applications' ? applications.filter((item) => !values.company_id || item.company_id === Number(values.company_id)) : field.options ?? [];
 
-  const edit = (item: any) => {
+  const createNew = () => {
+    setEditingId(null);
+    setValues(initialValues(config.fields, companyId));
+    setSelectedInstanceIds([]);
+    setOpen(true);
+  };
+
+  const edit = async (item: any) => {
     const next = initialValues(config.fields, companyId);
     for (const field of config.fields) {
       if (field.type === 'password') continue;
       const value = item[field.name];
       next[field.name] = field.type === 'boolean' ? enabled(value) : field.name === 'events' && Array.isArray(value) ? value.join(',') : value ?? next[field.name];
     }
-    setValues(next); setEditingId(Number(item.id)); setOpen(true);
+    const id = Number(item.id);
+    setValues(next);
+    setEditingId(id);
+    setSelectedInstanceIds([]);
+    setOpen(true);
+
+    if (resource === 'applications') {
+      setLoadingApplicationInstances(true);
+      try {
+        const response = await api.get(`/api/admin/applications/${id}/instances`);
+        const rows = response.data?.data ?? [];
+        setSelectedInstanceIds(rows.filter((instance: any) => instance.selected).map((instance: any) => Number(instance.id)));
+      } catch {
+        notifyError('Não foi possível carregar as instâncias vinculadas à aplicação.');
+      } finally {
+        setLoadingApplicationInstances(false);
+      }
+    }
   };
 
   async function submit(event: FormEvent) {
@@ -109,17 +167,27 @@ export function ResourceCrudPage({ resource }: { resource: keyof typeof resource
       const normalized = { ...values };
       if (!isSuperAdmin && companyId) { normalized.company_id = companyId; normalized.empresa_id = companyId; }
       const payload = config.toPayload(normalized);
+      let savedId = editingId;
+
       if (editingId) {
         const updated = await resourceService.update<any>(config.endpoint, editingId, payload);
         upsertLocal(updated);
       } else {
         const created = await resourceService.create<any>(config.endpoint, payload);
         upsertLocal(created.data);
+        savedId = Number(created.data?.id || 0);
         if (created.apiKey) {
           setGeneratedKey(created.apiKey);
           setTokenDialogOpen(true);
         }
       }
+
+      if (resource === 'applications' && savedId) {
+        await api.put(`/api/admin/applications/${savedId}/instances`, {
+          instance_ids: selectedInstanceIds,
+        });
+      }
+
       close();
     } catch {
       // O interceptor global da API exibe a mensagem de erro.
@@ -195,7 +263,7 @@ export function ResourceCrudPage({ resource }: { resource: keyof typeof resource
   return <AuthGuard><AppShell><Stack spacing={3}>
     <Stack direction={{ xs: 'column', sm: 'row' }} justifyContent="space-between" spacing={2} alignItems={{ sm: 'center' }}>
       <Box><Typography variant="h4" fontWeight={800}>{config.title}</Typography><Typography color="text.secondary">{config.description}</Typography></Box>
-      <Button variant="contained" startIcon={<AddRoundedIcon />} onClick={() => { setEditingId(null); setValues(initialValues(config.fields, companyId)); setOpen(true); }}>{config.actionLabel}</Button>
+      <Button variant="contained" startIcon={<AddRoundedIcon />} onClick={createNew}>{config.actionLabel}</Button>
     </Stack>
 
     <Card variant="outlined" sx={{ overflow: 'hidden' }}>
@@ -204,11 +272,9 @@ export function ResourceCrudPage({ resource }: { resource: keyof typeof resource
         <Button variant="contained" startIcon={<RefreshRoundedIcon />} onClick={() => void load()} disabled={loading} sx={{ minWidth: 120 }}>Atualizar</Button>
       </Stack></Box>
       <Divider />
-      <ResourceListTable config={config} rows={paginated} loading={loading} onEdit={edit} onDelete={requestRemove} onRegenerate={resource === 'apiKeys' ? requestRegenerate : undefined} onRevoke={resource === 'apiKeys' ? requestRevoke : undefined} />
+      <ResourceListTable config={config} rows={paginated} loading={loading} onEdit={(item) => void edit(item)} onDelete={requestRemove} onRegenerate={resource === 'apiKeys' ? requestRegenerate : undefined} onRevoke={resource === 'apiKeys' ? requestRevoke : undefined} />
       {!loading && <PaginationBar page={page} pageSize={pageSize} total={filtered.length} onPageChange={setPage} onPageSizeChange={(value) => { setPageSize(value); setPage(1); }} />}
     </Card>
-
-    {resource === 'applications' && <ApplicationInstancesManager />}
   </Stack>
 
   <Dialog open={open} onClose={saving ? undefined : close} fullWidth maxWidth="sm">
@@ -222,8 +288,43 @@ export function ResourceCrudPage({ resource }: { resource: keyof typeof resource
         ) : (
           <TextField key={field.name} label={field.label} type={field.type ?? 'text'} required={field.required && !(editingId && field.type === 'password')} fullWidth value={String(values[field.name] ?? '')} onChange={(event) => setValues((current) => ({ ...current, [field.name]: event.target.value }))} />
         ))}
+
+        {resource === 'applications' && (
+          <>
+            <FormControl fullWidth disabled={!formCompanyId || loadingApplicationInstances || !availableInstances.length}>
+              <InputLabel>Instâncias</InputLabel>
+              <Select
+                multiple
+                label="Instâncias"
+                value={selectedInstanceIds}
+                onChange={(event) => setSelectedInstanceIds((event.target.value as number[]).map(Number))}
+                renderValue={(selected) => selected
+                  .map((id) => availableInstances.find((instance) => instance.id === Number(id)))
+                  .filter(Boolean)
+                  .map((instance) => instance?.name || instance?.session)
+                  .join(', ')}
+              >
+                {availableInstances.map((instance) => (
+                  <MenuItem key={instance.id} value={instance.id}>
+                    <Checkbox checked={selectedInstanceIds.includes(instance.id)} />
+                    <ListItemText
+                      primary={instance.name || instance.session}
+                      secondary={`${instance.session} • ${instance.phone_number || 'sem número'} • ${instance.status || 'sem status'}`}
+                    />
+                  </MenuItem>
+                ))}
+              </Select>
+            </FormControl>
+            {!loadingApplicationInstances && formCompanyId > 0 && !availableInstances.length && (
+              <Alert severity="info">Não existem instâncias cadastradas para esta empresa.</Alert>
+            )}
+            <Typography variant="caption" color="text.secondary">
+              Selecione as instâncias que esta aplicação poderá utilizar. É possível salvar sem selecionar nenhuma.
+            </Typography>
+          </>
+        )}
       </Stack></DialogContent>
-      <DialogActions sx={{ p: 3 }}><Button onClick={close} disabled={saving}>Cancelar</Button><Button type="submit" variant="contained" disabled={saving}>{saving ? 'Salvando...' : 'Salvar'}</Button></DialogActions>
+      <DialogActions sx={{ p: 3 }}><Button onClick={close} disabled={saving}>Cancelar</Button><Button type="submit" variant="contained" disabled={saving || loadingApplicationInstances}>{saving ? 'Salvando...' : 'Salvar'}</Button></DialogActions>
     </Stack>
   </Dialog>
 
