@@ -4,6 +4,7 @@ import DeleteOutlineRoundedIcon from '@mui/icons-material/DeleteOutlineRounded';
 import LinkOffRoundedIcon from '@mui/icons-material/LinkOffRounded';
 import LogoutRoundedIcon from '@mui/icons-material/LogoutRounded';
 import QrCode2RoundedIcon from '@mui/icons-material/QrCode2Rounded';
+import WhatsAppIcon from '@mui/icons-material/WhatsApp';
 import {
   Alert, Avatar, Box, Chip, CircularProgress, IconButton, Stack, Table, TableBody,
   TableCell, TableContainer, TableHead, TableRow, Tooltip, Typography,
@@ -29,11 +30,11 @@ export function InstanceListTable({ rows, loading, busyId, onQr, onDisconnect, o
   if (loading) return <Stack alignItems="center" justifyContent="center" minHeight={260}><CircularProgress /></Stack>;
   if (!rows.length) return <Alert severity="info" sx={{ m: 2 }}>Nenhuma instância encontrada.</Alert>;
 
-  const columns: Array<[string, number]> = [['ID', 80], ['Instância', 230], ['Empresa', 170], ['Aplicações', 250], ['Número', 150], ['Status', 120]];
+  const columns: Array<[string, number]> = [['Nome', 290], ['Empresa', 170], ['Aplicações', 250], ['Número', 150], ['Status', 120]];
 
   return (
     <TableContainer sx={{ overflowX: 'auto' }}>
-      <Table stickyHeader size="small" sx={{ minWidth: 1200, tableLayout: 'fixed' }}>
+      <Table stickyHeader size="small" sx={{ minWidth: 1120, tableLayout: 'fixed' }}>
         <TableHead>
           <TableRow>
             {columns.map(([label, width]) => <TableCell key={label} sx={{ width, py: 1.25, bgcolor: 'action.selected', borderBottom: '1px solid', borderColor: 'divider', fontSize: 11, fontWeight: 800, letterSpacing: .35, color: 'text.secondary', textTransform: 'uppercase' }}>{label}</TableCell>)}
@@ -49,16 +50,15 @@ export function InstanceListTable({ rows, loading, busyId, onQr, onDisconnect, o
                 : [];
 
             return (
-              <TableRow hover key={instance.id} sx={{ '&:last-child td': { borderBottom: 0 }, '& td': { py: 1.2 } }}>
+              <TableRow hover key={instance.id} sx={{ '&:last-child td': { borderBottom: 0 }, '& td': { py: 1.5 } }}>
                 <TableCell>
-                  <Chip size="small" label={`#${instance.id}`} color="primary" variant="outlined" sx={{ fontWeight: 800 }} />
-                </TableCell>
-                <TableCell>
-                  <Stack direction="row" spacing={1.25} alignItems="center" minWidth={0}>
-                    <Avatar sx={{ width: 32, height: 32, bgcolor: 'primary.main', fontSize: 12, fontWeight: 800 }}>{(instance.name || instance.session || '?').slice(0, 2).toUpperCase()}</Avatar>
+                  <Stack direction="row" spacing={1.75} alignItems="center" minWidth={0}>
+                    <Avatar sx={{ width: 48, height: 48, bgcolor: '#25D366', color: '#fff' }}>
+                      <WhatsAppIcon sx={{ fontSize: 29 }} />
+                    </Avatar>
                     <Box minWidth={0}>
-                      <Typography variant="body2" fontWeight={700} noWrap title={instance.name || instance.session}>{instance.name || instance.session}</Typography>
-                      <Typography variant="caption" color="text.secondary" noWrap>{instance.session}</Typography>
+                      <Typography variant="body1" fontWeight={800} noWrap title={instance.name || instance.session}>{instance.name || instance.session}</Typography>
+                      <Typography variant="body2" color="text.secondary" noWrap>ID #{instance.id}</Typography>
                     </Box>
                   </Stack>
                 </TableCell>
