@@ -8,12 +8,22 @@ export type InstanceStatus =
   | 'logged_out'
   | 'error';
 
+export type InstanceApplication = {
+  id: number;
+  name: string;
+  status?: number;
+  events?: string[];
+  permissions?: string[];
+  metadata?: Record<string, unknown>;
+};
+
 export type WhatsAppInstance = {
   id: number;
   empresa_id: number;
   company_name?: string | null;
   application_id?: number | null;
   application_name?: string | null;
+  applications?: InstanceApplication[];
   external_instance_id?: number | null;
   session: string;
   name?: string | null;

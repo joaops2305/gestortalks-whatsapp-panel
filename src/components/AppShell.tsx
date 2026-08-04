@@ -10,6 +10,7 @@ import DescriptionRoundedIcon from '@mui/icons-material/DescriptionRounded';
 import SettingsRoundedIcon from '@mui/icons-material/SettingsRounded';
 import WebhookRoundedIcon from '@mui/icons-material/WebhookRounded';
 import MessageRoundedIcon from '@mui/icons-material/MessageRounded';
+import CampaignRoundedIcon from '@mui/icons-material/CampaignRounded';
 import InsightsRoundedIcon from '@mui/icons-material/InsightsRounded';
 import MenuBookRoundedIcon from '@mui/icons-material/MenuBookRounded';
 import DownloadRoundedIcon from '@mui/icons-material/DownloadRounded';
@@ -31,6 +32,7 @@ const allItems = [
   ['Usuários', '/usuarios', PeopleRoundedIcon, true],
   ['Instâncias', '/instancias', PhoneAndroidRoundedIcon, false],
   ['Mensagens', '/mensagens', MessageRoundedIcon, false],
+  ['Campanhas', '/campanhas', CampaignRoundedIcon, false],
   ['Aplicações', '/aplicacoes', HubRoundedIcon, false],
   ['Webhooks', '/webhooks', WebhookRoundedIcon, false],
   ['Métricas', '/metricas', InsightsRoundedIcon, false],

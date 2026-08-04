@@ -27,7 +27,7 @@ export function InstancesAdminPage() {
   const filtered = useMemo(() => {
     const term = search.trim().toLowerCase();
     if (!term) return items;
-    return items.filter((item) => [item.name, item.session, item.company_name, item.phone_number, item.status, item.provider]
+    return items.filter((item) => [item.id, item.name, item.session, item.company_name, item.phone_number, item.status, item.provider]
       .some((value) => String(value ?? '').toLowerCase().includes(term)));
   }, [items, search]);
 
@@ -68,7 +68,7 @@ export function InstancesAdminPage() {
     <Card variant="outlined" sx={{ overflow: 'hidden' }}>
       <Box sx={{ p: 2.5, bgcolor: 'background.paper' }}>
         <Stack direction={{ xs: 'column', lg: 'row' }} spacing={1.5}>
-          <TextField fullWidth size="small" value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Buscar por nome, sessão, empresa, número ou status..." InputProps={{ startAdornment: <InputAdornment position="start"><SearchRoundedIcon fontSize="small" /></InputAdornment> }} />
+          <TextField fullWidth size="small" value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Buscar por ID, nome, sessão, empresa, número ou status..." InputProps={{ startAdornment: <InputAdornment position="start"><SearchRoundedIcon fontSize="small" /></InputAdornment> }} />
           <Button variant="contained" startIcon={<RefreshRoundedIcon />} onClick={() => void load()} disabled={loading} sx={{ minWidth: 120 }}>Atualizar</Button>
         </Stack>
       </Box>
