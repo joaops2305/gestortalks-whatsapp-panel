@@ -9,6 +9,7 @@ import { AppShell } from '@/components/AppShell';
 import { AuthGuard } from '@/components/AuthGuard';
 import { PaginationBar } from '@/components/ui/PaginationBar';
 import { InstanceFormDialog } from '@/modules/instances/InstanceFormDialog';
+import { InstanceFilaDialog } from '@/modules/instances/InstanceFilaDialog';
 import { InstanceListTable } from '@/modules/instances/InstanceListTable';
 import { InstanceQrDialog } from '@/modules/instances/InstanceQrDialog';
 import { instanceService } from '@/modules/instances/instance.service';
@@ -21,6 +22,7 @@ export function InstancesAdminPage() {
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(10);
   const [selected, setSelected] = useState<WhatsAppInstance | null>(null);
+  const [filaSelected, setFilaSelected] = useState<WhatsAppInstance | null>(null);
   const [formOpen, setFormOpen] = useState(false);
   const [busyId, setBusyId] = useState<number | null>(null);
 
@@ -73,12 +75,13 @@ export function InstancesAdminPage() {
         </Stack>
       </Box>
       <Divider />
-      <InstanceListTable rows={paginated} loading={loading} busyId={busyId} onQr={setSelected} onDisconnect={(instance) => void action(instance, 'disconnect')} onLogout={(instance) => void action(instance, 'logout')} onDelete={(instance) => void remove(instance)} />
+      <InstanceListTable rows={paginated} loading={loading} busyId={busyId} onQr={setSelected} onFila={setFilaSelected} onDisconnect={(instance) => void action(instance, 'disconnect')} onLogout={(instance) => void action(instance, 'logout')} onDelete={(instance) => void remove(instance)} />
       {!loading && <PaginationBar page={page} pageSize={pageSize} total={filtered.length} onPageChange={setPage} onPageSizeChange={(value) => { setPageSize(value); setPage(1); }} />}
     </Card>
   </Stack>
 
   <InstanceFormDialog open={formOpen} onClose={() => setFormOpen(false)} onCreated={(instance) => { insertLocal(instance); setPage(1); }} />
+  <InstanceFilaDialog instance={filaSelected} open={Boolean(filaSelected)} onClose={() => setFilaSelected(null)} onSaved={(instance) => { patch(instance.id, { fila_envios_por_minuto: instance.fila_envios_por_minuto }); setFilaSelected(null); }} />
   <InstanceQrDialog instance={selected} open={Boolean(selected)} onClose={() => setSelected(null)} onChange={(changes) => selected && patch(selected.id, changes)} />
   </AppShell></AuthGuard>;
 }
