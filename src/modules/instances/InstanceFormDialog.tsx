@@ -23,6 +23,7 @@ export function InstanceFormDialog({ open, onClose, onCreated }: {
   const [name, setName] = useState('');
   const [session, setSession] = useState('');
   const [externalId, setExternalId] = useState('');
+  const [filaEnviosPorMinuto, setFilaEnviosPorMinuto] = useState(1);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
 
@@ -34,6 +35,7 @@ export function InstanceFormDialog({ open, onClose, onCreated }: {
     setName('');
     setSession('');
     setExternalId('');
+    setFilaEnviosPorMinuto(1);
     setError('');
 
     if (isSuperAdmin) {
@@ -56,6 +58,7 @@ export function InstanceFormDialog({ open, onClose, onCreated }: {
         external_instance_id: externalId ? Number(externalId) : null,
         session: session.trim(),
         name: name.trim() || null,
+        fila_envios_por_minuto: filaEnviosPorMinuto,
       });
 
       onCreated(created);
@@ -91,6 +94,7 @@ export function InstanceFormDialog({ open, onClose, onCreated }: {
             <TextField label="Nome da instância" value={name} onChange={(event) => setName(event.target.value)} placeholder="Ex.: Atendimento principal" fullWidth />
             <TextField label="Identificador da sessão" value={session} onChange={(event) => setSession(event.target.value)} placeholder="Ex.: inst_principal_001" required fullWidth />
             <TextField label="ID externo" type="number" value={externalId} onChange={(event) => setExternalId(event.target.value)} helperText="Opcional. Use para vincular com outro sistema." fullWidth />
+            <TextField label="Fila de envio - mensagens por minuto" type="number" value={filaEnviosPorMinuto} onChange={(event) => setFilaEnviosPorMinuto(Math.max(1, Math.min(60, Number(event.target.value) || 1)))} inputProps={{ min: 1, max: 60 }} helperText={`${filaEnviosPorMinuto} por minuto = aproximadamente ${Math.round(60 / filaEnviosPorMinuto)} segundo(s) entre envios.`} fullWidth />
           </Stack>
         </DialogContent>
         <DialogActions sx={{ p: 3 }}>
