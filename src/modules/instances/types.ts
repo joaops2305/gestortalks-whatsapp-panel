@@ -34,6 +34,7 @@ export type WhatsAppInstance = {
   owner_jid?: string | null;
   qr_available?: boolean;
   ativo?: number | boolean;
+  fila_envios_por_minuto?: number;
   created_at?: string;
   updated_at?: string;
 };
