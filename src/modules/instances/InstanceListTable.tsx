@@ -2,6 +2,7 @@
 
 import DeleteOutlineRoundedIcon from '@mui/icons-material/DeleteOutlineRounded';
 import LinkOffRoundedIcon from '@mui/icons-material/LinkOffRounded';
+import SpeedRoundedIcon from '@mui/icons-material/SpeedRounded';
 import LogoutRoundedIcon from '@mui/icons-material/LogoutRounded';
 import QrCode2RoundedIcon from '@mui/icons-material/QrCode2Rounded';
 import WhatsAppIcon from '@mui/icons-material/WhatsApp';
@@ -18,11 +19,12 @@ function statusColor(status: string) {
   return 'default' as const;
 }
 
-export function InstanceListTable({ rows, loading, busyId, onQr, onDisconnect, onLogout, onDelete }: {
+export function InstanceListTable({ rows, loading, busyId, onQr, onFila, onDisconnect, onLogout, onDelete }: {
   rows: WhatsAppInstance[];
   loading: boolean;
   busyId: number | null;
   onQr: (instance: WhatsAppInstance) => void;
+  onFila: (instance: WhatsAppInstance) => void;
   onDisconnect: (instance: WhatsAppInstance) => void;
   onLogout: (instance: WhatsAppInstance) => void;
   onDelete: (instance: WhatsAppInstance) => void;
@@ -72,6 +74,7 @@ export function InstanceListTable({ rows, loading, busyId, onQr, onDisconnect, o
                 <TableCell><Chip size="small" label={instance.status} color={statusColor(String(instance.status))} sx={{ minWidth: 92, fontWeight: 700 }} /></TableCell>
                 <TableCell align="right">
                   <Stack direction="row" spacing={0.25} justifyContent="flex-end">
+                    <Tooltip title={'Fila: ' + Number(instance.fila_envios_por_minuto || 1) + ' msg/min'}><IconButton size="small" onClick={() => onFila(instance)}><SpeedRoundedIcon fontSize="small" /></IconButton></Tooltip>
                     <Tooltip title="Conectar / QR Code"><IconButton size="small" onClick={() => onQr(instance)}><QrCode2RoundedIcon fontSize="small" /></IconButton></Tooltip>
                     <Tooltip title="Desconectar"><span><IconButton size="small" disabled={busyId === instance.id} onClick={() => onDisconnect(instance)}><LinkOffRoundedIcon fontSize="small" /></IconButton></span></Tooltip>
                     <Tooltip title="Logout"><span><IconButton size="small" color="warning" disabled={busyId === instance.id} onClick={() => onLogout(instance)}><LogoutRoundedIcon fontSize="small" /></IconButton></span></Tooltip>
