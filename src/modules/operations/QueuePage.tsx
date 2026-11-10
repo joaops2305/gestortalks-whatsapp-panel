@@ -18,6 +18,25 @@ import { operationsService } from './operations.service';
 const labels: Record<string,string> = { pending:'Pendente', processing:'Processando', sent:'Enviada', failed:'Falhou' };
 const colors: Record<string,any> = { pending:'warning', processing:'info', sent:'success', failed:'error' };
 
+type Period = 'today' | 'yesterday' | '7days' | 'custom';
+
+function dayRange(period: Period, customFrom = '', customTo = '') {
+  const now = new Date();
+  const start = new Date(now);
+  start.setHours(0,0,0,0);
+  const end = new Date(start);
+  end.setDate(end.getDate()+1);
+  if (period === 'yesterday') { start.setDate(start.getDate()-1); end.setDate(end.getDate()-1); }
+  if (period === '7days') start.setDate(start.getDate()-6);
+  if (period === 'custom' && customFrom && customTo) {
+    const from = new Date(customFrom + 'T00:00:00');
+    const to = new Date(customTo + 'T00:00:00');
+    to.setDate(to.getDate()+1);
+    return { date_from: from.toISOString(), date_to: to.toISOString() };
+  }
+  return { date_from: start.toISOString(), date_to: end.toISOString() };
+}
+
 function fmt(value?: string | null) {
   if (!value) return '-';
   return new Date(value).toLocaleString('pt-BR');
@@ -29,7 +48,10 @@ export function QueuePage() {
   const [instanceId,setInstanceId]=useState('');
   const [status,setStatus]=useState('');
   const [search,setSearch]=useState('');
-  const [filters,setFilters]=useState({instance_id:'',status:'',search:''});
+  const [period,setPeriod]=useState<Period>('today');
+  const [customFrom,setCustomFrom]=useState('');
+  const [customTo,setCustomTo]=useState('');
+  const [filters,setFilters]=useState({instance_id:'',status:'',search:'',period:'today' as Period,customFrom:'',customTo:''});
   const [page,setPage]=useState(1);
   const [pageSize,setPageSize]=useState(25);
   const [total,setTotal]=useState(0);
@@ -46,6 +68,7 @@ export function QueuePage() {
         instance_id: filters.instance_id ? Number(filters.instance_id) : undefined,
         status: filters.status,
         search: filters.search,
+        ...dayRange(filters.period, filters.customFrom, filters.customTo),
         page, limit: pageSize,
       });
       setRows(result.data ?? []);
@@ -61,7 +84,11 @@ export function QueuePage() {
     return ()=>window.clearInterval(timer);
   },[load]);
 
-  const apply=()=>{ setPage(1); setFilters({instance_id:instanceId,status,search}); };
+  const apply=()=>{
+    if(period==='custom' && (!customFrom || !customTo)) return;
+    setPage(1);
+    setFilters({instance_id:instanceId,status,search,period,customFrom,customTo});
+  };
 
   return <AuthGuard><AppShell><Stack spacing={3}>
     <Box>
@@ -82,6 +109,15 @@ export function QueuePage() {
             </Select>
           </FormControl>
           <FormControl size="small" sx={{minWidth:170}}>
+            <InputLabel>Período</InputLabel>
+            <Select label="Período" value={period} onChange={e=>setPeriod(e.target.value as Period)}>
+              <MenuItem value="today">Hoje</MenuItem>
+              <MenuItem value="yesterday">Ontem</MenuItem>
+              <MenuItem value="7days">Últimos 7 dias</MenuItem>
+              <MenuItem value="custom">Personalizado</MenuItem>
+            </Select>
+          </FormControl>
+          <FormControl size="small" sx={{minWidth:170}}>
             <InputLabel>Status</InputLabel>
             <Select label="Status" value={status} onChange={e=>setStatus(String(e.target.value))}>
               <MenuItem value="">Todos</MenuItem>
@@ -91,6 +127,10 @@ export function QueuePage() {
               <MenuItem value="failed">Falhou</MenuItem>
             </Select>
           </FormControl>
+          {period==='custom'&&<>
+            <TextField size="small" type="date" label="De" InputLabelProps={{shrink:true}} value={customFrom} onChange={e=>setCustomFrom(e.target.value)}/>
+            <TextField size="small" type="date" label="Até" InputLabelProps={{shrink:true}} value={customTo} onChange={e=>setCustomTo(e.target.value)}/>
+          </>}
           <Button variant="contained" startIcon={<RefreshRoundedIcon/>} onClick={apply}>Filtrar</Button>
         </Stack>
       </Box>
