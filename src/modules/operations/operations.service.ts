@@ -49,6 +49,13 @@ export const operationsService = {
     return data;
   },
 
+  async queue(query: Query = {}) {
+    const { data } = await api.get('/api/fila/messages', {
+      params: params(query),
+    });
+    return data;
+  },
+
   async metrics() {
     const { data } = await api.get('/api/operations/metrics');
     return data?.data ?? {};
