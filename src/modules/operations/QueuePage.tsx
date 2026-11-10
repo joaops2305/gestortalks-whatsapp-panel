@@ -12,6 +12,7 @@ import {
   TextField, Typography,
 } from '@mui/material';
 import { useCallback, useEffect, useState } from 'react';
+import type { SvgIconComponent } from '@mui/icons-material';
 import { AppShell } from '@/components/AppShell';
 import { AuthGuard } from '@/components/AuthGuard';
 import { PaginationBar } from '@/components/ui/PaginationBar';
@@ -106,12 +107,12 @@ export function QueuePage() {
       <Typography color="text.secondary">Acompanhe os envios enfileirados por instância.</Typography>
     </Box>
     <Box sx={{display:'grid',gridTemplateColumns:{xs:'1fr 1fr',lg:'repeat(4,1fr)'},gap:2}}>
-      {[
+      {([
         ['Pendentes',summary.pending,ScheduleRoundedIcon,'warning.main'],
         ['Processando',summary.processing,SendRoundedIcon,'info.main'],
         ['Enviadas',summary.sent,CheckCircleRoundedIcon,'success.main'],
         ['Falhas',summary.failed,ErrorRoundedIcon,'error.main'],
-      ].map(([label,value,Icon,color])=><Card key={String(label)} variant="outlined" sx={{p:2}}>
+      ] as Array<[string, number, SvgIconComponent, string]>).map(([label,value,Icon,color])=><Card key={label} variant="outlined" sx={{p:2}}>
         <Stack direction="row" alignItems="center" justifyContent="space-between">
           <Box><Typography variant="body2" color="text.secondary">{String(label)}</Typography><Typography variant="h4" fontWeight={800}>{Number(value)}</Typography></Box>
           <Box sx={{width:42,height:42,borderRadius:2,bgcolor:'action.hover',display:'grid',placeItems:'center',color:String(color)}}><Icon/></Box>
