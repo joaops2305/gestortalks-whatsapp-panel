@@ -1,6 +1,10 @@
 'use client';
 
 import RefreshRoundedIcon from '@mui/icons-material/RefreshRounded';
+import ScheduleRoundedIcon from '@mui/icons-material/ScheduleRounded';
+import SendRoundedIcon from '@mui/icons-material/SendRounded';
+import CheckCircleRoundedIcon from '@mui/icons-material/CheckCircleRounded';
+import ErrorRoundedIcon from '@mui/icons-material/ErrorRounded';
 import SearchRoundedIcon from '@mui/icons-material/SearchRounded';
 import {
   Alert, Box, Button, Card, Chip, CircularProgress, FormControl, InputAdornment, InputLabel,
@@ -57,6 +61,12 @@ export function QueuePage() {
   const [total,setTotal]=useState(0);
   const [loading,setLoading]=useState(true);
   const [error,setError]=useState('');
+  const summary = {
+    pending: rows.filter(row=>row.status==='pending').length,
+    processing: rows.filter(row=>row.status==='processing').length,
+    sent: rows.filter(row=>row.status==='sent').length,
+    failed: rows.filter(row=>row.status==='failed').length,
+  };
 
   useEffect(()=>{ void instanceService.list().then(setInstances).catch(()=>setInstances([])); },[]);
 
@@ -95,19 +105,35 @@ export function QueuePage() {
       <Typography variant="h4" fontWeight={800}>Fila</Typography>
       <Typography color="text.secondary">Acompanhe os envios enfileirados por instância.</Typography>
     </Box>
+    <Box sx={{display:'grid',gridTemplateColumns:{xs:'1fr 1fr',lg:'repeat(4,1fr)'},gap:2}}>
+      {[
+        ['Pendentes',summary.pending,ScheduleRoundedIcon,'warning.main'],
+        ['Processando',summary.processing,SendRoundedIcon,'info.main'],
+        ['Enviadas',summary.sent,CheckCircleRoundedIcon,'success.main'],
+        ['Falhas',summary.failed,ErrorRoundedIcon,'error.main'],
+      ].map(([label,value,Icon,color])=><Card key={String(label)} variant="outlined" sx={{p:2}}>
+        <Stack direction="row" alignItems="center" justifyContent="space-between">
+          <Box><Typography variant="body2" color="text.secondary">{String(label)}</Typography><Typography variant="h4" fontWeight={800}>{Number(value)}</Typography></Box>
+          <Box sx={{width:42,height:42,borderRadius:2,bgcolor:'action.hover',display:'grid',placeItems:'center',color:String(color)}}><Icon/></Box>
+        </Stack>
+      </Card>)}
+    </Box>
     <Card variant="outlined" sx={{overflow:'hidden'}}>
       <Box sx={{p:2.5}}>
-        <Stack direction={{xs:'column',lg:'row'}} spacing={1.5}>
-          <TextField fullWidth size="small" placeholder="Buscar número, mensagem ou erro" value={search}
-            onChange={e=>setSearch(e.target.value)} onKeyDown={e=>e.key==='Enter'&&apply()}
-            InputProps={{startAdornment:<InputAdornment position="start"><SearchRoundedIcon fontSize="small"/></InputAdornment>}}/>
-          <FormControl size="small" sx={{minWidth:230}}>
-            <InputLabel>Instância</InputLabel>
-            <Select label="Instância" value={instanceId} onChange={e=>setInstanceId(String(e.target.value))}>
-              <MenuItem value="">Todas as instâncias</MenuItem>
-              {instances.map(i=><MenuItem key={i.id} value={String(i.id)}>{i.name || i.session} (ID {i.id})</MenuItem>)}
-            </Select>
-          </FormControl>
+        <Stack spacing={1.5}>
+          <Stack direction={{xs:'column',md:'row'}} spacing={1.5}>
+            <TextField fullWidth size="small" placeholder="Buscar número, mensagem ou erro" value={search}
+              onChange={e=>setSearch(e.target.value)} onKeyDown={e=>e.key==='Enter'&&apply()}
+              InputProps={{startAdornment:<InputAdornment position="start"><SearchRoundedIcon fontSize="small"/></InputAdornment>}}/>
+            <FormControl size="small" sx={{minWidth:{md:280}}}>
+              <InputLabel>Instância</InputLabel>
+              <Select label="Instância" value={instanceId} onChange={e=>setInstanceId(String(e.target.value))}>
+                <MenuItem value="">Todas as instâncias</MenuItem>
+                {instances.map(i=><MenuItem key={i.id} value={String(i.id)}>{i.name || i.session} (ID {i.id})</MenuItem>)}
+              </Select>
+            </FormControl>
+          </Stack>
+          <Stack direction={{xs:'column',sm:'row'}} spacing={1.5}>
           <FormControl size="small" sx={{minWidth:170}}>
             <InputLabel>Período</InputLabel>
             <Select label="Período" value={period} onChange={e=>setPeriod(e.target.value as Period)}>
@@ -131,7 +157,8 @@ export function QueuePage() {
             <TextField size="small" type="date" label="De" InputLabelProps={{shrink:true}} value={customFrom} onChange={e=>setCustomFrom(e.target.value)}/>
             <TextField size="small" type="date" label="Até" InputLabelProps={{shrink:true}} value={customTo} onChange={e=>setCustomTo(e.target.value)}/>
           </>}
-          <Button variant="contained" startIcon={<RefreshRoundedIcon/>} onClick={apply}>Filtrar</Button>
+          <Button variant="contained" startIcon={<RefreshRoundedIcon/>} onClick={apply} sx={{ml:{sm:'auto'},minWidth:120}}>Filtrar</Button>
+          </Stack>
         </Stack>
       </Box>
       {error&&<Alert severity="error" sx={{mx:2.5,mb:2}}>{error}</Alert>}
@@ -152,7 +179,7 @@ export function QueuePage() {
                 <TableCell>{fmt(row.sent_at)}</TableCell>
                 <TableCell sx={{maxWidth:280}}><Typography variant="body2" noWrap title={row.error_message||''}>{row.error_message||'-'}</Typography></TableCell>
               </TableRow>)}
-              {!rows.length&&<TableRow><TableCell colSpan={8} sx={{py:5,textAlign:'center',color:'text.secondary'}}>Nenhum item na fila.</TableCell></TableRow>}
+              {!rows.length&&<TableRow><TableCell colSpan={8} sx={{py:8,textAlign:'center',color:'text.secondary'}}><Stack alignItems="center" spacing={1}><ScheduleRoundedIcon sx={{fontSize:36,opacity:.45}}/><Typography fontWeight={700}>Fila vazia</Typography><Typography variant="body2" color="text.secondary">Nenhuma mensagem encontrada para os filtros selecionados.</Typography></Stack></TableCell></TableRow>}
             </TableBody>
           </Table>
         </TableContainer>
