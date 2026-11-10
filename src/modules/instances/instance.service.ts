@@ -7,6 +7,7 @@ export type CreateInstancePayload = {
   external_instance_id?: number | null;
   session: string;
   name?: string | null;
+  fila_envios_por_minuto?: number;
 };
 
 export const instanceService = {
@@ -17,6 +18,11 @@ export const instanceService = {
 
   async create(payload: CreateInstancePayload): Promise<WhatsAppInstance> {
     const response = await api.post('/api/instances', payload);
+    return response.data?.data;
+  },
+
+  async update(id: number, payload: { fila_envios_por_minuto: number }): Promise<WhatsAppInstance> {
+    const response = await api.put(`/api/instances/${id}`, payload);
     return response.data?.data;
   },
 
