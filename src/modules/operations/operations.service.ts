@@ -7,6 +7,8 @@ export type Query = {
   instance_id?: number;
   status?: string;
   direction?: string;
+  date_from?: string;
+  date_to?: string;
 };
 
 export type OperationsSettings = {
