@@ -7,6 +7,8 @@ export type Query = {
   instance_id?: number;
   status?: string;
   direction?: string;
+  date_from?: string;
+  date_to?: string;
 };
 
 export type OperationsSettings = {
@@ -44,6 +46,13 @@ const normalizeSettings = (value: unknown): OperationsSettings => ({
 export const operationsService = {
   async messages(query: Query = {}) {
     const { data } = await api.get('/api/operations/messages', {
+      params: params(query),
+    });
+    return data;
+  },
+
+  async queue(query: Query = {}) {
+    const { data } = await api.get('/api/fila/messages', {
       params: params(query),
     });
     return data;
